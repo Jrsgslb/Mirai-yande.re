@@ -1,0 +1,2 @@
+#pragma code_page(65001)
+1 /* CREATEPROCESS_MANIFEST_RESOURCE_ID */ 24 /* RT_MANIFEST */ "D:/Project/mirai/Mirai-yande.re/out/build/x64-Debug (默认值)/CMakeFiles/Mirai-yande.dir/embed.manifest"

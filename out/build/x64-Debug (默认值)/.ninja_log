@@ -1,0 +1,8 @@
+# ninja log v5
+1	1310	631301289	CMakeFiles/Mirai-yande.dir/src/Json.cpp.obj	ea4fedd712df12e0
+12	2553	631301290	mirai-cpp/CMakeFiles/mirai-cpp.dir/src/message_chain.cpp.obj	b7516c83d85848d8
+9	5600	631301293	mirai-cpp/CMakeFiles/mirai-cpp.dir/src/event_func.cpp.obj	98109d9d646f5951
+16	5759	631301293	mirai-cpp/CMakeFiles/mirai-cpp.dir/src/mirai_bot.cpp.obj	1fa1c26d50184d6c
+5763	5915	631301294	mirai-cpp/mirai-cpp.lib	c02df19f57c74720
+0	6644	631301358	CMakeFiles/Mirai-yande.dir/src/main.cpp.obj	b37860391ed22898
+6672	8182	631301359	Mirai-yande.exe	fe5821b88e38ed16
