@@ -1,20 +1,17 @@
 // 注意: 本项目的所有源文件都必须是 UTF-8 编码
-
 #include <iostream>
 #include <map>
 #include <mirai.h>
 #include <windows.h>
-#include "myheader.h"
 #include <stdio.h>
 #include <fstream>
-#include <ctime>
+#include<sstream>
+#include <direct.h>
+#include <io.h>
 
 #include "yande.h"
-#include "massgage.h"
-
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/foreach.hpp>
+#include "message.h"
+#include "ClearTemp.h"
 
 #include <rapidjson/document.h>
 #include <rapidjson/pointer.h>
@@ -22,28 +19,59 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/filereadstream.h>
 
-#include "Json.h"
-#include "json/json.h"
-#include "../mirai-cpp/src/mirai_bot.cpp"
-
-#define BOOST_SPIRIT_THREADSAFE
 
 int main()
 {
 	using namespace std;
 	using namespace Cyan;
+	using namespace rapidjson;
 
 #if defined(WIN32) || defined(_WIN32)
 	// 切换代码页，让 CMD 可以显示 UTF-8 字符
 	system("chcp 65001");
 #endif
 
-	MiraiBot bot("127.0.0.1", 4233);
+	//检测并创建文件夹
+	if (_access("./temp", 0) == -1)_mkdir("./temp");
+	if (_access("./config", 0) == -1)_mkdir("./config");
+	if (_access("./config/data", 0) == -1)_mkdir("./config/data");
+
+
+	//读取config
+
+	FILE* fp = fopen("./config.json", "rb");
+
+	if (fp == NULL)
+	{
+		cout << "读取配置文件错误，请检查配置文件是否存在\n";
+		system("pause");
+		return 0;
+	}
+
+	char readBuffer[10000];
+	FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+	Document d;
+	d.ParseStream(is);
+
+	fclose(fp);
+	int64_t port, QQ_num;
+
+	port = atoi(d["port"].GetString());
+	stringstream stream;
+	stream << d["qq"].GetString();
+	stream >> QQ_num;
+	stream.clear();
+	QQ_t qq = QQ_t(QQ_num);
+
+	
+
+	//自动登录
+	MiraiBot bot(d["host"].GetString(),port );
 	while (true)
 	{
 		try
 		{
-			bot.Auth("INITKEYXayIRiSH", 2901025495_qq);
+			bot.Auth(d["key"].GetString(), qq);
 			break;
 		}
 		catch (const std::exception& ex)
@@ -52,7 +80,7 @@ int main()
 		}
 		MiraiBot::SleepSeconds(1);
 	}
-	cout << "Bot Working..." << endl;
+	cout << "Bot Working..." << endl << "\n本程序所有config文件都采用UTF-8字符编码\n\n重载config文件请重启本程序...\n\n";
 
 	map<GID_t, bool> groups;
 
@@ -61,22 +89,63 @@ int main()
 		{
 			try
 			{
-				string plain = m.MessageChain.GetPlainText();
-				massage(plain);
-				if (plain == "test")
+				string plain = m.MessageChain.GetPlainText(), adminer = GroupPermissionStr(m.Sender.Permission);
+				if (MessageCheck(plain))
 				{
-					m.Reply(MessageChain().Plain("..."));
-					/*
-					int yand = yande(m.Sender.Group.GID);
-					if(yand == 2) m.Reply(MessageChain().Plain("网络错误"));
+					bool admin;
+					if (adminer == "ADMINISTRATOR" || adminer == "OWNER") admin = true;
+					else admin = false;
+					if (MessageLimit(plain, m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64(), admin))
+					{
+						m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+						string yand;
+						assert(d["是否使用代理"].IsBool());
+						if (d["是否使用代理"].GetBool())
+							yand = yande(plain, true, d["http"].GetString(), d["https"].GetString(), d["发送原图"].GetBool());
+						else
+							yand = yande(plain, false, "123", "123", d["发送原图"].GetBool());
+
+						if (yand == "error") m.Reply(MessageChain().Plain("网络错误"));
+						else if (yand == "r18") m.Reply(MessageChain().Plain("这张图不适合在本群观看"));
+						else
+						{
+							GroupImage img = bot.UploadGroupImage(yand);
+							int MsId = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
+
+							if (!d["是否缓存图片"].GetBool()) remove(yand.c_str());
+							if (d["是否撤回"].GetBool())
+							{
+								_sleep(d["撤回延时"].GetInt() * 1000);
+								bot.Recall(MsId);
+							}
+						}
+					}
+					else
+						m.QuoteReply(MessageChain().Plain("123"));
+					return;
+				}
+
+				if (plain == "更新Tag" && m.Sender.QQ.ToInt64() == d["主人"].GetInt64()) {
+					string tag;
+					m.QuoteReply(MessageChain().Plain("更新中..."));
+					if (d["是否使用代理"].GetBool())
+						tag = MessageReload(true, d["http"].GetString(), d["https"].GetString());
+					else
+						tag = MessageReload(false, d["http"].GetString(), d["https"].GetString());
+					if (tag == "ok")m.QuoteReply(MessageChain().Plain("更新完成"));
 					else
 					{
-						GroupImage img = bot.UploadGroupImage("./sky1.jpg");
-						bot.SendMessage(m.Sender.Group.GID, MessageChain().FlashImage(img));
-						remove("./skt.jpg");
+						tag = "更新出错，出错的tag有:\n" + tag;
+						m.Reply(MessageChain().Plain(tag));
 					}
-					*/
 					return;
+				}
+				
+				if (plain == "清理缓存" && m.Sender.QQ.ToInt64() == d["主人"].GetInt64())
+				{
+					if (ClearTemp()) m.QuoteReply(MessageChain().Plain("清理成功"));
+					else
+						m.QuoteReply(MessageChain().Plain("清理失败"));
 				}
 			}
 			catch (const std::exception& ex)
@@ -85,12 +154,25 @@ int main()
 			}
 		});
 
+	bot.On<FriendMessage>(
+		[&](FriendMessage m) {
+			try
+			{
+				string plain = m.MessageChain.GetPlainText();
+			}
+			catch (const std::exception& ex)
+			{
+				cout << ex.what() << endl;
+			}
+		}
+	);
+
 	//消息撤回事件
 	bot.On<BotInvitedJoinGroupRequestEvent>(
 		[&](BotInvitedJoinGroupRequestEvent e)
 		{
 			cout << "邀请你入群：" << e.GroupName << ", " << e.Message << endl;
-			e.Reject();
+			e.Accept();
 		});
 
 

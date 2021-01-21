@@ -28,7 +28,7 @@ endif(MSVC)
 
 list(APPEND SOURCES src/logo.rc)
 
-add_executable(${PROJECT_NAME} src/main.cpp "src/Json.cpp" "include/Json.h" "include/yande.h" "include/massgage.h")
+add_executable(${PROJECT_NAME} src/main.cpp   "include/yande.h" "include/message.h"  "src/yande.cpp" "src/message.cpp" "include/ClearTemp.h" "src/ClearTemp.cpp")
 # 设置头文件目录
 include_directories(include)
 # 链接 mirai-cpp
