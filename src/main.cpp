@@ -168,6 +168,11 @@ int main()
 	);
 
 	//消息撤回事件
+	bot.OnEventReceived<NewFriendRequestEvent>(
+		[&](NewFriendRequestEvent newFriend)
+		{
+			newFriend.Accept();
+		});
 	bot.On<BotInvitedJoinGroupRequestEvent>(
 		[&](BotInvitedJoinGroupRequestEvent e)
 		{

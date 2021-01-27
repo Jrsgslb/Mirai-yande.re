@@ -1,7 +1,8 @@
 #include <iostream>
-#include <stdio.h>
+#include <random>
 #include <fstream>
 #include <ctime>
+#include <stdio.h>
 
 #include <cpr/cpr.h>
 
@@ -34,16 +35,18 @@ string yande(string plain, bool proxy, string http, string https, bool file_url)
 	basic_ptree<string, string> tag = p.get_child(plain);
 	string tags = tag.get<string>("tag");
 
-	srand((unsigned)time(NULL));
-	int rands = rand() % tag.get<int>("num") + 1;
-	string page = to_string(rands);
+	default_random_engine e;
+	uniform_int_distribution<unsigned> u(1, tag.get<int>("num"));
+	e.seed(GetUnixTime());
+	string page = to_string(u(e));
 
 	Response r;
+	//5 秒超时
 	if (proxy)
-		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Proxies{ {"https", https} });
+		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Proxies{ {"https", https} }, Timeout{5000});
 	else
-		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} });
-	if (r.status_code != 200)return "error";
+		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Timeout{5000});
+	if (r.status_code != 200 || r.elapsed >= 5)return "error";
 	stringstream ss(r.text);
 	ptree pt;
 	// 读取JSON数据
@@ -84,8 +87,25 @@ string yande(string plain, bool proxy, string http, string https, bool file_url)
 		system(https.c_str());
 	}
 	
-	HRESULT hr = URLDownloadToFile(NULL, url.c_str(), _T(file.c_str()), 0, NULL);
+	HRESULT hr = URLDownloadToFile(NULL, url.c_str(), file.c_str(), 0, NULL);
 	if (hr != S_OK)
 		return "error";
 	return file;
+}
+
+//获取13位时间戳
+static __int64 GetUnixTime()
+{
+	string nowTimeUnix;
+	string cs_uninxtime;
+	string cs_milliseconds;
+	SYSTEMTIME sysTime;
+	GetLocalTime(&sysTime);
+	time_t unixTime;
+	time(&unixTime);
+	char buf[30], buf1[30];
+	sprintf_s(buf, sizeof(buf), "%I64d", (INT64)unixTime);
+	sprintf_s(buf1, sizeof(buf1), "%03I64d", (INT64)sysTime.wMilliseconds);
+	nowTimeUnix = string(buf) + string(buf1);
+	return _atoi64(nowTimeUnix.c_str());
 }

@@ -51,6 +51,11 @@ string MessageReload(bool proxy, string http, string https)
 		basic_ptree<string, string> temp = pt.get_child((*i).first.data());
 		string tags = temp.get<string>("tag"), txt, num;
 		num = (*i).first.data();
+
+		if (i == tag.begin()) comm = (*i).first.data();
+		else
+			comm = comm + "\n" + (*i).first.data();
+
 		//获取网页并检验状态
 		if (proxy)
 			r = Get(Url{ "https://yande.re/post.xml" }, Parameters{ {"tags", tags.c_str()} }, Proxies{ {"https", https} });
@@ -67,24 +72,19 @@ string MessageReload(bool proxy, string http, string https)
 			num = num + ".num";
 			pt.put<string>(num.c_str(), txt.c_str());
 			ini_parser::write_ini("./config/rule.ini", pt);
-			if (i == tag.begin()) comm = (*i).first.data();
-			else
-			comm = comm + "\n" + (*i).first.data();
 			_sleep(1 * 1000);
 		}
 	}
 
+	FILE* tem = fopen("./config/指令.txt", "w");
+	fprintf(tem, "%s", comm.c_str());
+	fclose(tem);
+
 	if (!err.empty())return err;
-	else
-	{
-		FILE* tem = fopen("./config/指令.txt", "w");
-		fprintf(tem, "%s", comm.c_str());
-		fclose(tem);
-		return "ok";
-	}
+	else return "ok";
 }
 
-bool MessageLimit(string plain, int qq_num, int group_num, bool admin)
+bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 {
 	SetConsoleOutputCP(65001);
 	ifstream in1("./config/群白名单.txt"), in2("./config/白名单.txt");
@@ -107,17 +107,34 @@ bool MessageLimit(string plain, int qq_num, int group_num, bool admin)
 	if (!fs1)
 	{
 		ofstream fout("./config/data/member.ini");
-		if (fout)fout.close();
+		if (fout) fout.close();
 	}
 	if (!fs2)
 	{
 		ofstream fout("./config/data/group.ini");
-		if (fout)fout.close();
+		if (fout) fout.close();
 	}
+	
+
 	/*
-	残留问题
+	残留问题：
+
 	member分割问题
+
+	频率限制无法限制住
+
+	网络超时检查
+
+	速度太快可能会导致图片没发出去就被删了？
+
+	？？？qq号码会是负数的问题？？？
+
+	？？？
+	热门图片指令的频率限制实现
+	？？？
+
 	*/
+
 	//频率限制开始
 	switch (mod1)
 	{
