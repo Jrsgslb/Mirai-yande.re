@@ -10,10 +10,8 @@ set(MIRAI_CPP_BUILD_EXAMPLES OFF CACHE BOOL "Build examples" FORCE)
 set(-DCMAKE_TOOLCHAIN_FILE=D:/Dl/vcpkg-2020.07/scripts/buildsystems/vcpkg.cmake)
 # 添加子模块 mirai-cpp
 add_subdirectory(mirai-cpp)
-#find_package(RapidJSON CONFIG REQUIRED)
 #cpr库
 find_package(cpr CONFIG REQUIRED)
-#-----
 find_package(RapidJSON)
 find_package(jsoncpp CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
@@ -38,7 +36,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE jsoncpp_lib)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${BOOST_PROPERTY_TREE_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json nlohmann_json::nlohmann_json)
-#target_include_directories(main PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
 # 使用 mirai-cpp 静态库
 target_compile_definitions(${PROJECT_NAME} PRIVATE MIRAICPP_STATICLIB)
 # gcc 要连接 pthread

@@ -46,7 +46,7 @@ string yande(string plain, bool proxy, string http, string https, bool file_url)
 		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Proxies{ {"https", https} }, Timeout{5000});
 	else
 		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Timeout{5000});
-	if (r.status_code != 200 || r.elapsed >= 5)return "error";
+	if (r.status_code != 200)return "error";
 	stringstream ss(r.text);
 	ptree pt;
 	// ¶ÁÈ¡JSONÊı¾İ

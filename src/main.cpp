@@ -29,6 +29,7 @@ int main()
 #if defined(WIN32) || defined(_WIN32)
 	// 切换代码页，让 CMD 可以显示 UTF-8 字符
 	system("chcp 65001");
+	SetConsoleTitle("Mirai-yande.re");
 #endif
 
 	//检测并创建文件夹
@@ -43,7 +44,7 @@ int main()
 
 	if (fp == NULL)
 	{
-		cout << "读取配置文件错误，请检查配置文件是否存在\n";
+		cout << "Error reading configuration file, please check whether the configuration file exists.\n";
 		system("pause");
 		return 0;
 	}
@@ -80,7 +81,7 @@ int main()
 		}
 		MiraiBot::SleepSeconds(1);
 	}
-	cout << "Bot Working..." << endl << "\n本程序所有config文件都采用UTF-8字符编码\n\n重载config文件请重启本程序...\n\n";
+	cout << "Bot Working..." << endl << "\nAll config files of this program adopt UTF-8 character encoding.\n\nReload the config file, please restart the program...\n\n";
 
 	map<GID_t, bool> groups;
 
@@ -105,23 +106,28 @@ int main()
 						else
 							yand = yande(plain, false, "123", "123", d["发送原图"].GetBool());
 
-						if (yand == "error") m.Reply(MessageChain().Plain("网络错误"));
+						if (yand == "error") m.Reply(MessageChain().Plain("网络错误或tag填写错误"));
 						else if (yand == "r18") m.Reply(MessageChain().Plain("这张图不适合在本群观看"));
 						else
 						{
+							//发送图片并处理发送完成事宜
+							//处理优先级：撤回>清楚缓存
 							GroupImage img = bot.UploadGroupImage(yand);
 							int MsId = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
 
-							if (!d["是否缓存图片"].GetBool()) remove(yand.c_str());
 							if (d["是否撤回"].GetBool())
 							{
 								_sleep(d["撤回延时"].GetInt() * 1000);
 								bot.Recall(MsId);
 							}
+
+							if (!d["是否缓存图片"].GetBool())
+							{
+								_sleep(3 * 1000);
+								remove(yand.c_str());
+							}
 						}
 					}
-					else
-						m.QuoteReply(MessageChain().Plain("123"));
 					return;
 				}
 
