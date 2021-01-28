@@ -1,6 +1,5 @@
 // 注意: 本项目的所有源文件都必须是 UTF-8 编码
 #include <iostream>
-#include <map>
 #include <mirai.h>
 #include <windows.h>
 #include <stdio.h>
@@ -83,8 +82,6 @@ int main()
 	}
 	cout << "Bot Working..." << endl << "\nAll config files of this program adopt UTF-8 character encoding.\n\nReload the config file, please restart the program...\n\n";
 
-	map<GID_t, bool> groups;
-
 	bot.On<GroupMessage>(
 		[&](GroupMessage m)
 		{
@@ -131,7 +128,7 @@ int main()
 					return;
 				}
 
-				if (plain == "更新Tag" && m.Sender.QQ.ToInt64() == d["主人"].GetInt64()) {
+				if (plain == "更新tag" && m.Sender.QQ.ToInt64() == d["主人"].GetInt64()) {
 					string tag;
 					m.QuoteReply(MessageChain().Plain("更新中..."));
 					if (d["是否使用代理"].GetBool())
@@ -159,33 +156,6 @@ int main()
 				cout << ex.what() << endl;
 			}
 		});
-
-	bot.On<FriendMessage>(
-		[&](FriendMessage m) {
-			try
-			{
-				string plain = m.MessageChain.GetPlainText();
-			}
-			catch (const std::exception& ex)
-			{
-				cout << ex.what() << endl;
-			}
-		}
-	);
-
-	//消息撤回事件
-	bot.OnEventReceived<NewFriendRequestEvent>(
-		[&](NewFriendRequestEvent newFriend)
-		{
-			newFriend.Accept();
-		});
-	bot.On<BotInvitedJoinGroupRequestEvent>(
-		[&](BotInvitedJoinGroupRequestEvent e)
-		{
-			cout << "邀请你入群：" << e.GroupName << ", " << e.Message << endl;
-			e.Accept();
-		});
-
 
 	bot.EventLoop();
 

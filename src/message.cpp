@@ -22,7 +22,7 @@ using namespace boost::property_tree;
 bool MessageCheck(string plain)
 {
     SetConsoleOutputCP(65001);
-    ifstream in("./config/指令.txt");
+    ifstream in("./config/command.txt");
     string line;
 	while (getline(in, line))
 	{
@@ -36,6 +36,7 @@ bool MessageCheck(string plain)
 
 string MessageReload(bool proxy, string http, string https)
 {
+	SetConsoleOutputCP(65001);
 	ptree pt;
 	ini_parser::read_ini("./config/rule.ini", pt);
 
@@ -72,11 +73,10 @@ string MessageReload(bool proxy, string http, string https)
 			num = num + ".num";
 			pt.put<string>(num.c_str(), txt.c_str());
 			ini_parser::write_ini("./config/rule.ini", pt);
-			_sleep(1 * 1000);
 		}
 	}
 
-	FILE* tem = fopen("./config/指令.txt", "w");
+	FILE* tem = fopen("./config/command.txt", "w");
 	fprintf(tem, "%s", comm.c_str());
 	fclose(tem);
 
@@ -94,35 +94,33 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 	//个人白名单验证
 	if (in2) while (getline(in2, line2))if (!line2.empty() && stoi(line2) == qq_num) return true;
 
-	ptree p;
+	ptree p, ini;
 	ini_parser::read_ini("./config/rule.ini", p);
-	auto ini = p.get_child(plain);
+	ini = p.get_child(plain);
 	int mod1, mod2, time_set;
 	mod1 = ini.get<int>("mode1");
 	mod2 = ini.get<int>("mode2");
 	time_set = ini.get<int>("time");
-	int64_t num = ini.get<int64_t>("member", 0);
-	string str = ini.get<string>("member", "0"), f = "|";
+	string str = ini.get<string>("member", "0"), temp;
 
-	/*
 	//正则分割member
-	regex reg(f.c_str());
-	vector<std::string> vec;
-	sregex_token_iterator it(str.begin(), str.end(), reg, -1);
-	sregex_token_iterator end;
-	while (it != end)
+	regex reg("[1-9][0-9]{4,14}");
+	smatch res;
+	//迭代器声明
+	string::const_iterator ben = str.begin(); 
+	string::const_iterator end = str.end();
+	bool member_ini;
+	while (regex_search(ben, end, res, reg))
 	{
-		vec.push_back(*it++);
+		temp = res[0];
+		if (_atoi64(temp.c_str()) == qq_num)
+		{
+			member_ini = true;
+			break;
+		}
+		member_ini = false;
+		ben = res[0].second;
 	}
-	for (int i = 0, size = vec.size(); i < size; i++)
-	{
-		cout << vec[i] << endl;
-	}
-	
-	
-	*/
-	
-
 
 	//文件不存在自动创建
 	fstream fs1, fs2;
@@ -141,8 +139,6 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 
 	/*
 	残留问题：
-
-	member分割问题
 
 	？？？
 	热门图片指令的频率限制实现
@@ -187,7 +183,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以群为单位，指定群生效，其余群不生效
 			case(1):
-				if (num == group_num)
+				if (member_ini)
 				{
 					if (time_new - time_old > time_set)
 					{
@@ -202,7 +198,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return true;
 				//以群为单位，指定群生效，其余群屏蔽
 			case(2):
-				if (num == group_num)
+				if (member_ini)
 				{
 					if (time_new - time_old > time_set)
 					{
@@ -217,7 +213,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以群为单位，指定群不生效，其余群生效
 			case(3):
-				if (num == group_num) return true;
+				if (member_ini) return true;
 				if (time_new - time_old > time_set)
 				{
 					group_pt.put<int>(test.c_str(), time_new);
@@ -228,7 +224,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以群为单位，指定群屏蔽，其余群生效
 			case(4):
-				if (num == group_num) return false;
+				if (member_ini) return false;
 				if (time_new - time_old > time_set)
 				{
 					group_pt.put<int>(test.c_str(), time_new);
@@ -239,7 +235,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以群为单位，管理放行，指定群屏蔽
 			case(5):
-				if (num == group_num) return false;
+				if (member_ini) return false;
 				if (admin) return true;
 				if (time_new - time_old > time_set)
 				{
@@ -251,7 +247,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以群为单位，管理生效，指定群和群员屏蔽
 			case(6):
-				if (num == group_num || !admin) return false;
+				if (member_ini || !admin) return false;
 				if (time_new - time_old > time_set)
 				{
 					group_pt.put<int>(test.c_str(), time_new);
@@ -295,7 +291,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，指定的人生效
 			case(1):
-				if (qq_num == num)
+				if (member_ini)
 				{
 					if (time_new - time_old > time_set)
 					{
@@ -310,7 +306,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return true;
 				//以个人为单位，指定的人生效，其余人屏蔽
 			case(2):
-				if (qq_num == num)
+				if (member_ini)
 				{
 					if (time_new - time_old > time_set)
 					{
@@ -325,7 +321,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，指定的人放行，其余的人生效
 			case(3):
-				if (qq_num == num) return true;
+				if (member_ini) return true;
 				if (time_new - time_old > time_set)
 				{
 					member.put<int>(test.c_str(), time_new);
@@ -336,7 +332,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，指定的人屏蔽，其余的人生效
 			case(4):
-				if (qq_num == num) return false;
+				if (member_ini) return false;
 				if (time_new - time_old > time_set)
 				{
 					member.put<int>(test.c_str(), time_new);
@@ -347,7 +343,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，群管理员放行，指定的人屏蔽，其余人生效
 			case(5):
-				if (qq_num == num) return false;
+				if (member_ini) return false;
 				if (admin) return true;
 				if (time_new - time_old > time_set)
 				{
@@ -359,7 +355,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，群管理员生效，指定的人和其余的人屏蔽
 			case(6):
-				if (qq_num == num || !admin) return false;
+				if (member_ini || !admin) return false;
 				if (time_new - time_old > time_set)
 				{
 					member.put<int>(test.c_str(), time_new);
@@ -403,7 +399,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，指定的群生效
 			case(1):
-				if (group_num == num)
+				if (member_ini)
 				{
 					if (time_new - time_old > time_set)
 					{
@@ -418,7 +414,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return true;
 				//以个人为单位，指定的群生效，其余人屏蔽
 			case(2):
-				if (group_num == num)
+				if (member_ini)
 				{
 					if (time_new - time_old > time_set)
 					{
@@ -433,7 +429,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，指定的群放行，其余的人生效
 			case(3):
-				if (group_num == num) return true;
+				if (member_ini) return true;
 				if (time_new - time_old > time_set)
 				{
 					member.put<int>(test.c_str(), time_new);
@@ -444,7 +440,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，指定的群屏蔽，其余的人生效
 			case(4):
-				if (group_num == num) return false;
+				if (member_ini) return false;
 				if (time_new - time_old > time_set)
 				{
 					member.put<int>(test.c_str(), time_new);
@@ -455,7 +451,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，群管理员放行，指定的群屏蔽，其余人生效
 			case(5):
-				if (group_num == num) return false;
+				if (member_ini) return false;
 				if (admin) return true;
 				if (time_new - time_old > time_set)
 				{
@@ -467,7 +463,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 					return false;
 				//以个人为单位，群管理员生效，指定的群和其余的人屏蔽
 			case(6):
-				if (group_num == num || !admin) return false;
+				if (member_ini || !admin) return false;
 				if (time_new - time_old > time_set)
 				{
 					member.put<int>(test.c_str(), time_new);
