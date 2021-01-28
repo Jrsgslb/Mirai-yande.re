@@ -14,7 +14,6 @@ add_subdirectory(mirai-cpp)
 find_package(cpr CONFIG REQUIRED)
 find_package(RapidJSON)
 find_package(jsoncpp CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
 #链接boost库
 find_path(BOOST_PROPERTY_TREE_INCLUDE_DIRS "boost/property_tree/detail/exception_implementation.hpp")
 # 源码以 UTF-8 编码保存，使用 MSVC 编译器时需要加编译参数提供支持
@@ -35,7 +34,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE cpr)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE jsoncpp_lib)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${BOOST_PROPERTY_TREE_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json nlohmann_json::nlohmann_json)
 # 使用 mirai-cpp 静态库
 target_compile_definitions(${PROJECT_NAME} PRIVATE MIRAICPP_STATICLIB)
 # gcc 要连接 pthread
