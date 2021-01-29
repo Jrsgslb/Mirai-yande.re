@@ -1,4 +1,4 @@
-ï»¿#pragma once
+#pragma once
 #include "message.h"
 
 #include <boost/property_tree/ptree.hpp>  
@@ -43,7 +43,7 @@ string MessageReload(bool proxy, string http, string https)
 	basic_ptree<string, string> tag = pt.get_child("");
 
 	string err, comm;
-	//éå†rule.ini
+	//±éÀúrule.ini
 	for (auto i = tag.begin(); i != tag.end(); i++)
 	{
 		Response r;
@@ -57,7 +57,7 @@ string MessageReload(bool proxy, string http, string https)
 		else
 			comm = comm + "\n" + (*i).first.data();
 
-		//è·å–ç½‘é¡µå¹¶æ£€éªŒçŠ¶æ€
+		//»ñÈ¡ÍøÒ³²¢¼ìÑé×´Ì¬
 		if (proxy)
 			r = Get(Url{ "https://yande.re/post.xml" }, Parameters{ {"tags", tags.c_str()} }, Proxies{ {"https", https} });
 		else
@@ -65,11 +65,11 @@ string MessageReload(bool proxy, string http, string https)
 		if (r.status_code != 200)err = tags + "\n" + err;
 		else
 		{
-			//æ­£åˆ™å–å‡ºæ¬¡æ•°
+			//ÕıÔòÈ¡³ö´ÎÊı
 			auto pos = r.text.cbegin();
 			auto end = r.text.cend();
 			for (; regex_search(pos, end, res, reg); pos = res.suffix().first) txt = res.str(1);
-			//å†™å…¥æ–‡ä»¶
+			//Ğ´ÈëÎÄ¼ş
 			num = num + ".num";
 			pt.put<string>(num.c_str(), txt.c_str());
 			ini_parser::write_ini("./config/rule.ini", pt);
@@ -87,26 +87,26 @@ string MessageReload(bool proxy, string http, string https)
 bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 {
 	SetConsoleOutputCP(65001);
-	ifstream in1("./config/ç¾¤ç™½åå•.txt"), in2("./config/ç™½åå•.txt");
+	ifstream in1("./config/Èº°×Ãûµ¥.txt"), in2("./config/°×Ãûµ¥.txt");
 	string line1, line2;
-	//ç¾¤ç™½åå•éªŒè¯
+	//Èº°×Ãûµ¥ÑéÖ¤
 	if (in1) while (getline(in1, line1)) if (!line1.empty() && stoi(line1) == group_num) return true;
-	//ä¸ªäººç™½åå•éªŒè¯
+	//¸öÈË°×Ãûµ¥ÑéÖ¤
 	if (in2) while (getline(in2, line2))if (!line2.empty() && stoi(line2) == qq_num) return true;
 
 	ptree p, ini;
 	ini_parser::read_ini("./config/rule.ini", p);
 	ini = p.get_child(plain);
 	int mod1, mod2, time_set;
-	mod1 = ini.get<int>("mode1");
-	mod2 = ini.get<int>("mode2");
-	time_set = ini.get<int>("time");
+	mod1 = ini.get<int>("mode1", 10);
+	mod2 = ini.get<int>("mode2", 10);
+	time_set = ini.get<int>("time", 10);
 	string str = ini.get<string>("member", "0"), temp;
 
-	//æ­£åˆ™åˆ†å‰²member
+	//ÕıÔò·Ö¸îmember
 	regex reg("[1-9][0-9]{4,14}");
 	smatch res;
-	//è¿­ä»£å™¨å£°æ˜
+	//µü´úÆ÷ÉùÃ÷
 	string::const_iterator ben = str.begin(); 
 	string::const_iterator end = str.end();
 	bool member_ini;
@@ -122,7 +122,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 		ben = res[0].second;
 	}
 
-	//æ–‡ä»¶ä¸å­˜åœ¨è‡ªåŠ¨åˆ›å»º
+	//ÎÄ¼ş²»´æÔÚ×Ô¶¯´´½¨
 	fstream fs1, fs2;
 	fs1.open("./config/data/member.ini", ios::in);
 	fs2.open("./config/data/group.ini", ios::in);
@@ -138,15 +138,15 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 	}
 
 	/*
-	æ®‹ç•™é—®é¢˜ï¼š
+	²ĞÁôÎÊÌâ£º
 
-	ï¼Ÿï¼Ÿï¼Ÿ
-	çƒ­é—¨å›¾ç‰‡æŒ‡ä»¤çš„é¢‘ç‡é™åˆ¶å®ç°
-	ï¼Ÿï¼Ÿï¼Ÿ
+	£¿£¿£¿
+	ÈÈÃÅÍ¼Æ¬Ö¸ÁîµÄÆµÂÊÏŞÖÆÊµÏÖ
+	£¿£¿£¿
 
 	*/
 
-	//é¢‘ç‡é™åˆ¶å¼€å§‹
+	//ÆµÂÊÏŞÖÆ¿ªÊ¼
 	switch (mod1)
 	{
 		default: return true;
@@ -155,7 +155,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			ptree group_pt, group_time;
 			string test = to_string(group_num) + ".time";
 			ini_parser::read_ini("./config/data/group.ini", group_pt);
-			//ç©ºé”®åå¤„ç†
+			//¿Õ¼üÃû´¦Àí
 			try
 			{
 				group_time = group_pt.get_child(to_string(group_num));
@@ -171,7 +171,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			switch (mod2)
 			{
 			default: return true;
-				//ä»¥ç¾¤ä¸ºå•ä½ï¼Œå…¨éƒ¨ç¾¤ç”Ÿæ•ˆ
+				//ÒÔÈºÎªµ¥Î»£¬È«²¿ÈºÉúĞ§
 			case(0):
 				if (time_new - time_old > time_set)
 				{
@@ -181,7 +181,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ç¾¤ä¸ºå•ä½ï¼ŒæŒ‡å®šç¾¤ç”Ÿæ•ˆï¼Œå…¶ä½™ç¾¤ä¸ç”Ÿæ•ˆ
+				//ÒÔÈºÎªµ¥Î»£¬Ö¸¶¨ÈºÉúĞ§£¬ÆäÓàÈº²»ÉúĞ§
 			case(1):
 				if (member_ini)
 				{
@@ -196,7 +196,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return true;
-				//ä»¥ç¾¤ä¸ºå•ä½ï¼ŒæŒ‡å®šç¾¤ç”Ÿæ•ˆï¼Œå…¶ä½™ç¾¤å±è”½
+				//ÒÔÈºÎªµ¥Î»£¬Ö¸¶¨ÈºÉúĞ§£¬ÆäÓàÈºÆÁ±Î
 			case(2):
 				if (member_ini)
 				{
@@ -211,7 +211,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ç¾¤ä¸ºå•ä½ï¼ŒæŒ‡å®šç¾¤ä¸ç”Ÿæ•ˆï¼Œå…¶ä½™ç¾¤ç”Ÿæ•ˆ
+				//ÒÔÈºÎªµ¥Î»£¬Ö¸¶¨Èº²»ÉúĞ§£¬ÆäÓàÈºÉúĞ§
 			case(3):
 				if (member_ini) return true;
 				if (time_new - time_old > time_set)
@@ -222,7 +222,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ç¾¤ä¸ºå•ä½ï¼ŒæŒ‡å®šç¾¤å±è”½ï¼Œå…¶ä½™ç¾¤ç”Ÿæ•ˆ
+				//ÒÔÈºÎªµ¥Î»£¬Ö¸¶¨ÈºÆÁ±Î£¬ÆäÓàÈºÉúĞ§
 			case(4):
 				if (member_ini) return false;
 				if (time_new - time_old > time_set)
@@ -233,7 +233,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ç¾¤ä¸ºå•ä½ï¼Œç®¡ç†æ”¾è¡Œï¼ŒæŒ‡å®šç¾¤å±è”½
+				//ÒÔÈºÎªµ¥Î»£¬¹ÜÀí·ÅĞĞ£¬Ö¸¶¨ÈºÆÁ±Î
 			case(5):
 				if (member_ini) return false;
 				if (admin) return true;
@@ -245,7 +245,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ç¾¤ä¸ºå•ä½ï¼Œç®¡ç†ç”Ÿæ•ˆï¼ŒæŒ‡å®šç¾¤å’Œç¾¤å‘˜å±è”½
+				//ÒÔÈºÎªµ¥Î»£¬¹ÜÀíÉúĞ§£¬Ö¸¶¨ÈººÍÈºÔ±ÆÁ±Î
 			case(6):
 				if (member_ini || !admin) return false;
 				if (time_new - time_old > time_set)
@@ -263,7 +263,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			ptree member, n_time;
 			string test = to_string(qq_num) + ".time";
 			ini_parser::read_ini("./config/data/member.ini", member);
-			//ç©ºé”®åå¤„ç†
+			//¿Õ¼üÃû´¦Àí
 			try
 			{
 				n_time = member.get_child(to_string(qq_num));
@@ -279,7 +279,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			switch (mod2)
 			{
 			default: return true;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œå…¨éƒ¨äººç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬È«²¿ÈËÉúĞ§
 			case(0):
 				if (time_new - time_old > time_set)
 				{
@@ -289,7 +289,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„äººç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈËÉúĞ§
 			case(1):
 				if (member_ini)
 				{
@@ -304,7 +304,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return true;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„äººç”Ÿæ•ˆï¼Œå…¶ä½™äººå±è”½
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈËÉúĞ§£¬ÆäÓàÈËÆÁ±Î
 			case(2):
 				if (member_ini)
 				{
@@ -319,7 +319,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„äººæ”¾è¡Œï¼Œå…¶ä½™çš„äººç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈË·ÅĞĞ£¬ÆäÓàµÄÈËÉúĞ§
 			case(3):
 				if (member_ini) return true;
 				if (time_new - time_old > time_set)
@@ -330,7 +330,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„äººå±è”½ï¼Œå…¶ä½™çš„äººç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈËÆÁ±Î£¬ÆäÓàµÄÈËÉúĞ§
 			case(4):
 				if (member_ini) return false;
 				if (time_new - time_old > time_set)
@@ -341,7 +341,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œç¾¤ç®¡ç†å‘˜æ”¾è¡Œï¼ŒæŒ‡å®šçš„äººå±è”½ï¼Œå…¶ä½™äººç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Èº¹ÜÀíÔ±·ÅĞĞ£¬Ö¸¶¨µÄÈËÆÁ±Î£¬ÆäÓàÈËÉúĞ§
 			case(5):
 				if (member_ini) return false;
 				if (admin) return true;
@@ -353,7 +353,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œç¾¤ç®¡ç†å‘˜ç”Ÿæ•ˆï¼ŒæŒ‡å®šçš„äººå’Œå…¶ä½™çš„äººå±è”½
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Èº¹ÜÀíÔ±ÉúĞ§£¬Ö¸¶¨µÄÈËºÍÆäÓàµÄÈËÆÁ±Î
 			case(6):
 				if (member_ini || !admin) return false;
 				if (time_new - time_old > time_set)
@@ -371,7 +371,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			ptree member, n_time;
 			string test = to_string(qq_num) + ".time";
 			ini_parser::read_ini("./config/data/member.ini", member);
-			//ç©ºé”®åå¤„ç†
+			//¿Õ¼üÃû´¦Àí
 			try
 			{
 				n_time = member.get_child(to_string(qq_num));
@@ -387,7 +387,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			switch (mod2)
 			{
 			default: return true;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œå…¨éƒ¨äººç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬È«²¿ÈËÉúĞ§
 			case(0):
 				if (time_new - time_old > time_set)
 				{
@@ -397,7 +397,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„ç¾¤ç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈºÉúĞ§
 			case(1):
 				if (member_ini)
 				{
@@ -412,7 +412,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return true;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„ç¾¤ç”Ÿæ•ˆï¼Œå…¶ä½™äººå±è”½
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈºÉúĞ§£¬ÆäÓàÈËÆÁ±Î
 			case(2):
 				if (member_ini)
 				{
@@ -427,7 +427,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„ç¾¤æ”¾è¡Œï¼Œå…¶ä½™çš„äººç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈº·ÅĞĞ£¬ÆäÓàµÄÈËÉúĞ§
 			case(3):
 				if (member_ini) return true;
 				if (time_new - time_old > time_set)
@@ -438,7 +438,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„ç¾¤å±è”½ï¼Œå…¶ä½™çš„äººç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈºÆÁ±Î£¬ÆäÓàµÄÈËÉúĞ§
 			case(4):
 				if (member_ini) return false;
 				if (time_new - time_old > time_set)
@@ -449,7 +449,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œç¾¤ç®¡ç†å‘˜æ”¾è¡Œï¼ŒæŒ‡å®šçš„ç¾¤å±è”½ï¼Œå…¶ä½™äººç”Ÿæ•ˆ
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Èº¹ÜÀíÔ±·ÅĞĞ£¬Ö¸¶¨µÄÈºÆÁ±Î£¬ÆäÓàÈËÉúĞ§
 			case(5):
 				if (member_ini) return false;
 				if (admin) return true;
@@ -461,7 +461,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œç¾¤ç®¡ç†å‘˜ç”Ÿæ•ˆï¼ŒæŒ‡å®šçš„ç¾¤å’Œå…¶ä½™çš„äººå±è”½
+				//ÒÔ¸öÈËÎªµ¥Î»£¬Èº¹ÜÀíÔ±ÉúĞ§£¬Ö¸¶¨µÄÈººÍÆäÓàµÄÈËÆÁ±Î
 			case(6):
 				if (member_ini || !admin) return false;
 				if (time_new - time_old > time_set)
@@ -475,5 +475,5 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			}
 		}
 	}
-	//é¢‘ç‡é™åˆ¶ç»“æŸ
+	//ÆµÂÊÏŞÖÆ½áÊø
 }

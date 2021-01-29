@@ -108,19 +108,19 @@ int main()
 						else
 						{
 							//发送图片并处理发送完成事宜
-							//处理优先级：撤回>清楚缓存
+							//处理优先级：撤回>清除缓存
 							GroupImage img = bot.UploadGroupImage(yand);
 							int MsId = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
 
 							if (d["是否撤回"].GetBool())
 							{
-								_sleep(d["撤回延时"].GetInt() * 1000);
+								_sleep(d["撤回延时"].GetInt()*1000);
 								bot.Recall(MsId);
 							}
 
 							if (!d["是否缓存图片"].GetBool())
 							{
-								_sleep(3 * 1000);
+								_sleep(5*1000);
 								remove(yand.c_str());
 							}
 						}
