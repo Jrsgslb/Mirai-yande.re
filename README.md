@@ -2,6 +2,8 @@
 ## 简介
 > 本项目是基于[Mirai-Api-Http](https://github.com/project-mirai/mirai-api-http)和[Mirai-cpp](https://github.com/cyanray/mirai-cpp)的[yande.re](https://yande.re)(国内需要使用代理访问)自定义发图项目
  ~~代码太烂大佬们看看就好~~
+
+>问题反馈或者不会用可以加群：[418227569](https://qm.qq.com/cgi-bin/qm/qr?k=FwFTGePLZ7PljrBzwrl4Boo6Q_2JqTuS&jump_from=webapi)
 ## 使用说明
 ### **使用之前**
 在**插件运行目录**下创建`config.json`写入配置信息
