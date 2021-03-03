@@ -12,8 +12,8 @@ set(-DCMAKE_TOOLCHAIN_FILE=D:/Dl/vcpkg-2020.07/scripts/buildsystems/vcpkg.cmake)
 add_subdirectory(mirai-cpp)
 #cpr库
 find_package(cpr CONFIG REQUIRED)
+#RapidJSON库
 find_package(RapidJSON)
-find_package(jsoncpp CONFIG REQUIRED)
 #链接boost库
 find_path(BOOST_PROPERTY_TREE_INCLUDE_DIRS "boost/property_tree/detail/exception_implementation.hpp")
 # 源码以 UTF-8 编码保存，使用 MSVC 编译器时需要加编译参数提供支持
@@ -32,7 +32,6 @@ include_directories(include)
 target_link_libraries(${PROJECT_NAME} PRIVATE mirai-cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE jsoncpp_lib)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${BOOST_PROPERTY_TREE_INCLUDE_DIRS})
 # 使用 mirai-cpp 静态库
 target_compile_definitions(${PROJECT_NAME} PRIVATE MIRAICPP_STATICLIB)

@@ -1,99 +1,91 @@
-#include <iostream>
+﻿#include <iostream>
 #include <random>
 #include <fstream>
 #include <ctime>
 #include <stdio.h>
+#include <vector>
 
 #include <cpr/cpr.h>
 
 #include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/foreach.hpp>
 #include <boost/property_tree/ini_parser.hpp> 
+
+#include "rapidjson/pointer.h"
 
 #include< urlmon.h >
 
-#include "json/json.h"
-
 #include "yande.h"
-
-#define BOOST_SPIRIT_THREADSAFE
 
 #include <tchar.h>
 #include <urlmon.h>
 #pragma comment(lib,"urlmon.lib")
-using namespace std;
 
+using namespace std;
 using namespace cpr;
 using namespace boost::property_tree;
-using namespace Json;
+using namespace rapidjson;
 
-string yande(string plain, bool proxy, string http, string https, bool file_url)
+vector<string> yande(string plain, bool proxy, string http, string https, bool file_url, int64_t group_num)
 {
+	vector<string> id_info;
+	//读取tag信息
 	ptree p;
 	ini_parser::read_ini("./config/rule.ini", p);
 	basic_ptree<string, string> tag = p.get_child(plain);
 	string tags = tag.get<string>("tag");
-
+	//取随机数
 	default_random_engine e;
 	uniform_int_distribution<unsigned> u(1, tag.get<int>("num"));
 	e.seed(GetUnixTime());
 	string page = to_string(u(e));
 
 	Response r;
-	//5 �볬ʱ
+	//5 秒超时
 	if (proxy)
-		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Proxies{ {"https", https} });
+		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Proxies{ {"https", https} }, Timeout{5000});
 	else
-		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} });
-	if (r.status_code != 200)return "error";
-	stringstream ss(r.text);
-	ptree pt;
-	// ��ȡJSON����
-	read_json(ss, pt);
-	string tem = "./temp/" + page + "temp.json";
-	write_json(tem.c_str(), pt);
-
-	Json::Reader reader;
-	Json::Value root;
-	ifstream is;
-	is.open(tem.c_str(), ios::binary);
-	if (!reader.parse(is, root))
+		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Timeout{5000});
+	if (r.status_code != 200)
 	{
-		remove(tem.c_str());
-		return "error";
+		id_info.push_back("网络错误或tag填写错误");
+		return id_info;
 	}
-	is.close();
-	remove(tem.c_str());
-	//�����ж�
-	if (root[""]["rating"].asString() < tag.get<string>("rating")) return "r18";
-	string url, file;
+	//读取json
+	Document y;
+	y.Parse(r.text.c_str());
+	string  url, file,rating,r18_temp;
+	int id;
+	id = Pointer("/0/id").Get(y)->GetInt();
 	if (file_url)
 	{
-		url = root[""]["file_url"].asString();
-		file = "./temp/" + root[""]["id"].asString() + "." + root[""]["file_ext"].asString();
+		url = Pointer("/0/file_url").Get(y)->GetString();
+		file = "./temp/" + to_string(id) + "." + Pointer("/0/file_ext").Get(y)->GetString();
 	}
 	else
 	{
-		url = root[""]["sample_url"].asString();
-		file = "./temp/" + root[""]["id"].asString() + ".jpg";
+		url = Pointer("/0/sample_url").Get(y)->GetString();
+		file = "./temp/" + to_string(id) + ".jpg";
 	}
-
-	if (proxy)
+	rating = Pointer("/0/rating").Get(y)->GetString();
+	//R18限制
+	ptree r18;
+	ini_parser::read_ini("./config/data/group.ini", r18);
+	r18_temp = to_string(group_num) + ".R18";
+	if (rating < tag.get<string>("rating") && !r18.get<bool>(r18_temp.c_str(), false))
 	{
-		http = "set http_proxy = http://" + http;
-		https = "set https_proxy = https://" + https;
-		system(http.c_str());
-		system(https.c_str());
+		id_info.push_back("这张图片不适合在本群观看哦");
+		return id_info;
 	}
-	
-	HRESULT hr = URLDownloadToFile(NULL, url.c_str(), file.c_str(), 0, NULL);
-	if (hr != S_OK)
-		return "error";
-	return file;
+	//push数据
+	id_info.push_back(to_string(id));
+	id_info.push_back(url);
+	id_info.push_back(file);
+	id_info.push_back(rating);
+	return id_info;
+
 }
 
-//��ȡ13λʱ���
+//获取13位时间戳
 static __int64 GetUnixTime()
 {
 	string nowTimeUnix;
@@ -108,4 +100,24 @@ static __int64 GetUnixTime()
 	sprintf_s(buf1, sizeof(buf1), "%03I64d", (INT64)sysTime.wMilliseconds);
 	nowTimeUnix = string(buf) + string(buf1);
 	return _atoi64(nowTimeUnix.c_str());
+}
+
+bool DownloadImg(string url, string file, bool proxy, string https, string http)
+{
+	//代理设置
+	if (proxy)
+	{
+		http = "set http_proxy = http://" + http;
+		https = "set https_proxy = https://" + https;
+		system(http.c_str());
+		system(https.c_str());
+	}
+
+	HRESULT hr = URLDownloadToFile(NULL, url.c_str(), file.c_str(), 0, NULL);
+	if (hr != S_OK)
+	{
+		return false;
+	}
+	else
+		return true;
 }

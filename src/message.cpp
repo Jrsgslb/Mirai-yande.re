@@ -59,9 +59,9 @@ string MessageReload(bool proxy, string http, string https)
 
 		//获取网页并检验状态
 		if (proxy)
-			r = Get(Url{ "https://yande.re/post.xml" }, Parameters{ {"tags", tags.c_str()} }, Proxies{ {"https", https} });
+			r = Get(Url{ "https://yande.re/post.xml" }, Parameters{ {"tags", tags.c_str()} }, Proxies{ {"https", https} }, Timeout{10000});
 		else
-			r = Get(Url{ "https://yande.re/post.xml" }, Parameters{ {"tags", tags.c_str()} });
+			r = Get(Url{ "https://yande.re/post.xml" }, Parameters{ {"tags", tags.c_str()} }, Timeout{10000});
 		if (r.status_code != 200)err = tags + "\n" + err;
 		else
 		{
@@ -120,21 +120,6 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 		}
 		member_ini = false;
 		ben = res[0].second;
-	}
-
-	//文件不存在自动创建
-	fstream fs1, fs2;
-	fs1.open("./config/data/member.ini", ios::in);
-	fs2.open("./config/data/group.ini", ios::in);
-	if (!fs1)
-	{
-		ofstream fout("./config/data/member.ini");
-		if (fout) fout.close();
-	}
-	if (!fs2)
-	{
-		ofstream fout("./config/data/group.ini");
-		if (fout) fout.close();
 	}
 
 	/*
@@ -476,4 +461,35 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 		}
 	}
 	//频率限制结束
+}
+
+bool MessageR18(int64_t qq_num, int64_t group_num, bool R18)
+{
+	string temp;
+	ptree r18;
+
+	ini_parser::read_ini("./config/data/group.ini", r18);
+
+	if (R18)
+	{
+		temp = to_string(group_num) + ".R18";
+		if (r18.get<bool>(temp.c_str(), false))
+		{
+			return false;
+		}
+		r18.put<bool>(temp.c_str(), true);
+		ini_parser::write_ini("./config/data/group.ini", r18);
+		return true;
+	}
+	else
+	{
+		temp = to_string(group_num) + ".R18";
+		if (!r18.get<bool>(temp.c_str(), false))
+		{
+			return false;
+		}
+		r18.put<bool>(temp.c_str(), false);
+		ini_parser::write_ini("./config/data/group.ini", r18);
+		return true;
+	}
 }
