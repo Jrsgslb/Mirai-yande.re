@@ -1,41 +1,41 @@
-﻿#include <iostream>
-#include <random>
-#include <fstream>
-#include <ctime>
-#include <stdio.h>
-#include <vector>
+﻿#include "../include/yande.h"
 
-#include <cpr/cpr.h>
-
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/ini_parser.hpp> 
-
-#include "rapidjson/pointer.h"
-
-#include< urlmon.h >
-
-#include "yande.h"
-
-#include <tchar.h>
-#include <urlmon.h>
-#pragma comment(lib,"urlmon.lib")
-
-using namespace std;
-using namespace cpr;
-using namespace boost::property_tree;
-using namespace rapidjson;
-
-vector<string> yande(string plain, bool proxy, string http, string https, bool file_url, int64_t group_num)
+vector<string> yande(string plain, bool proxy, string https, bool file_url, int64_t group_num)
 {
+	int num;
 	vector<string> id_info;
 	//读取tag信息
-	ptree p;
+	ptree p, num_time;
 	ini_parser::read_ini("./config/rule.ini", p);
 	basic_ptree<string, string> tag = p.get_child(plain);
 	string tags = tag.get<string>("tag");
+	//老图片过滤机制
+	time_t timep;
+	struct tm* t;
+	time(&timep);
+	t = localtime(&timep);
+	ini_parser::read_ini("./temp/num.ini", num_time);
+	plain = plain + "." + to_string(t->tm_year + 1900) + "/" + to_string(t->tm_mon +1) + "/" + to_string(t->tm_mday);
+	int num_num = num_time.get<int>(plain.c_str(), 0) + 1;
+	num_time.put<int>(plain.c_str(), num_num);
+	ini_parser::write_ini("./temp/num.ini", num_time);
+
+	if (tag.get<int>("num") >= 1000)
+	{
+		if (num_num > 500 && tag.get<int>("num") > 2000)
+		{
+			num = 1000;
+		}
+		else
+		{
+			num = 500;
+		}
+	}
+	else
+		num = tag.get<int>("num");
 	//取随机数
 	default_random_engine e;
-	uniform_int_distribution<unsigned> u(1, tag.get<int>("num"));
+	uniform_int_distribution<unsigned> u(1, num);
 	e.seed(GetUnixTime());
 	string page = to_string(u(e));
 
@@ -82,7 +82,6 @@ vector<string> yande(string plain, bool proxy, string http, string https, bool f
 	id_info.push_back(file);
 	id_info.push_back(rating);
 	return id_info;
-
 }
 
 //获取13位时间戳
@@ -102,12 +101,13 @@ static __int64 GetUnixTime()
 	return _atoi64(nowTimeUnix.c_str());
 }
 
-bool DownloadImg(string url, string file, bool proxy, string https, string http)
+bool DownloadImg(string url, string file, bool proxy, string https)
 {
 	//代理设置
 	if (proxy)
 	{
-		http = "set http_proxy = http://" + http;
+		string http;
+		http = "set http_proxy = http://" + https;
 		https = "set https_proxy = https://" + https;
 		system(http.c_str());
 		system(https.c_str());
@@ -120,4 +120,26 @@ bool DownloadImg(string url, string file, bool proxy, string https, string http)
 	}
 	else
 		return true;
+}
+
+bool ClearTemp()
+{
+	intptr_t handle;
+	_finddata_t findData;
+
+	handle = _findfirst("./temp/*.*", &findData);    // 查找目录中的第一个文件
+	if (handle == -1) return false;
+	string file;
+	do
+	{
+		if (strcmp(findData.name, ".") && strcmp(findData.name, ".."))
+		{
+			file = findData.name;
+			file = "./temp/" + file;
+			cout << "Del:" << findData.name << endl;
+			remove(file.c_str());
+		}
+	} while (_findnext(handle, &findData) == 0);    // 查找目录中的下一个文件
+	_findclose(handle);    // 关闭搜索句柄
+	return true;
 }

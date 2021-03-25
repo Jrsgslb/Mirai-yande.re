@@ -1,63 +1,28 @@
 ﻿// 注意: 本项目的所有源文件都必须是 UTF-8 编码
-#include <iostream>
 #include <mirai.h>
-#include <windows.h>
-#include <stdio.h>
-#include <fstream>
-#include<sstream>
-#include <direct.h>
-#include <vector>
-#include <io.h>
 
-#include "yande.h"
-#include "message.h"
-#include "ClearTemp.h"
-
-#include <rapidjson/document.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/filereadstream.h>
-
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/ini_parser.hpp> 
+#include "../include/yande.h"
+#include "../include/message.h"
+#include "../include/imgsearch.h"
+#include <rapidjson\writer.h>
 
 
 int main()
 {
-	using namespace std;
+	if (!StartCheck())
+	{
+		cout << "DLL加载错误";
+		return 0;
+	}
+
 	using namespace Cyan;
-	using namespace rapidjson;
-	using namespace boost::property_tree;
+
 
 #if defined(WIN32) || defined(_WIN32)
 	// 切换代码页，让 CMD 可以显示 UTF-8 字符
 	system("chcp 65001");
 	SetConsoleTitle("Mirai-yande.re");
 #endif
-
-	//检测并创建文件夹
-	if (_access("./temp", 0) == -1)_mkdir("./temp");
-	if (_access("./config", 0) == -1)_mkdir("./config");
-	if (_access("./config/data", 0) == -1)_mkdir("./config/data");
-	//文件不存在自动创建
-	fstream fs1, fs2;
-	fs1.open("./config/data/member.ini", ios::in);
-	fs2.open("./config/data/group.ini", ios::in);
-	if (!fs1)
-	{
-		ofstream fout("./config/data/member.ini");
-		if (fout) fout.close();
-	}
-	else
-		fs1.close();
-	if (!fs2)
-	{
-		ofstream fout("./config/data/group.ini");
-		if (fout) fout.close();
-	}
-	else
-		fs2.close();
-
 
 	//读取config
 
@@ -94,6 +59,7 @@ int main()
 		try
 		{
 			bot.Auth(d["key"].GetString(), qq);
+			bot.SendMessage(QQ_t(d["主人"].GetInt64()),MessageChain().Plain("Bot已上线\n刷新配置文件请重启Mirai-yande"));
 			break;
 		}
 		catch (const std::exception& ex)
@@ -109,8 +75,63 @@ int main()
 		{
 			try
 			{
-				string plain = m.MessageChain.GetPlainText(), adminer = GroupPermissionStr(m.Sender.Permission);
+				auto mc = m.MessageChain;
+				auto qms = mc.GetAll<QuoteMessage>();
+				string plain = mc.GetPlainText(), adminer = GroupPermissionStr(m.Sender.Permission);
 				bool admin;
+				if (!qms.empty())
+				{
+					auto id = qms[0].MessageId();
+					if (strstr(plain.c_str(), d["搜图"].GetString()) != NULL || m.AtMe())
+					{
+						Document ms;
+						ms.Parse(bot.GetGroupMessageFromId(id).ToString().c_str());
+						string type = Pointer("/messageChain/0/type").Get(ms)->GetString();
+						if (type == "Image")
+						{
+							Document p;
+							p = a2d_search(d["是否使用代理"].GetBool(), d["proxy"].GetString(), Pointer("/messageChain/0/url").Get(ms)->GetString());
+							if (Pointer("/code").Get(p)->GetInt() != 0)
+							{
+								m.QuoteReply(MessageChain().Plain("搜索出错了，请稍后重试"));
+								return;
+							}
+							if (DownloadImg(Pointer("/color/url").Get(p)->GetString(), Pointer("/color/name").Get(p)->GetString(), d["是否使用代理"].GetBool(), d["proxy"].GetString()) && DownloadImg(Pointer("/bovw/url").Get(p)->GetString(), Pointer("/bovw/name").Get(p)->GetString(), d["是否使用代理"].GetBool(), d["proxy"].GetString()))
+							{
+								string repl_color, repl_bovw;
+								GroupImage img_clolr = bot.UploadGroupImage(Pointer("/color/name").Get(p)->GetString());
+								GroupImage img_bovw = bot.UploadGroupImage(Pointer("/bovw/name").Get(p)->GetString());
+								repl_color = Pointer("/color/pic/name").Get(p)->GetString();
+								repl_color = repl_color + "\n原图地址:" + Pointer("/color/pic/url").Get(p)->GetString() + "\nAuthor:" + Pointer("/color/user/url").Get(p)->GetString();
+								repl_bovw = Pointer("/bovw/pic/name").Get(p)->GetString();
+								repl_bovw = repl_bovw + "\n原图地址:" + Pointer("/bovw/pic/url").Get(p)->GetString() + "\nAuthor:" + Pointer("/bovw/user/url").Get(p)->GetString();
+								m.QuoteReply(MessageChain().Plain("色调搜索结果:").Image(img_clolr).Plain(repl_color));
+								m.QuoteReply(MessageChain().Plain("特征搜索结果:").Image(img_bovw).Plain(repl_bovw));
+
+								if (!d["是否缓存图片"].GetBool())
+								{
+									_sleep(5 * 1000);
+									remove(Pointer("/color/name").Get(p)->GetString());
+									remove(Pointer("/bovw/name").Get(p)->GetString());
+								}
+							}
+							else
+							{
+								m.QuoteReply(MessageChain().Plain("网络错误，搜索结果可能不包含图片"));
+								string repl_color, repl_bovw;
+								repl_color = Pointer("/color/pic/name").Get(p)->GetString();
+								repl_color = repl_color + "\n原图地址:" + Pointer("/color/pic/url").Get(p)->GetString() + "\nAuthor:" + Pointer("/color/user/url").Get(p)->GetString();
+								repl_bovw = Pointer("/bovw/pic/name").Get(p)->GetString();
+								repl_bovw = repl_bovw + "\n原图地址:" + Pointer("/bovw/pic/url").Get(p)->GetString() + "\nAuthor:" + Pointer("/bovw/user/url").Get(p)->GetString();
+								m.QuoteReply(MessageChain().Plain("色调搜索结果:").Plain(repl_color));
+								m.QuoteReply(MessageChain().Plain("特征搜索结果:").Plain(repl_bovw));
+							}
+							return;
+						}
+					}
+					return;
+				}
+				
 				if (adminer == "ADMINISTRATOR" || adminer == "OWNER" || m.Sender.QQ.ToInt64() == d["主人"].GetInt64()) admin = true;
 				else admin = false;
 
@@ -118,9 +139,9 @@ int main()
 					string tag;
 					m.QuoteReply(MessageChain().Plain("更新中..."));
 					if (d["是否使用代理"].GetBool())
-						tag = MessageReload(true, d["http"].GetString(), d["https"].GetString());
+						tag = MessageReload(true, d["proxy"].GetString());
 					else
-						tag = MessageReload(false, d["http"].GetString(), d["https"].GetString());
+						tag = MessageReload(false, d["proxy"].GetString());
 					if (tag == "ok")m.QuoteReply(MessageChain().Plain("更新完成"));
 					else
 					{
@@ -154,6 +175,18 @@ int main()
 						m.QuoteReply(MessageChain().Plain("请勿重复关闭哦"));
 				}
 
+				if (plain == "菜单" || plain == "help")
+				{
+					ifstream in("./config/command.txt");
+					string i,menu;
+					while (getline(in, i))
+					{
+						menu = "\n" + i + menu;
+					}
+					m.Reply(MessageChain().At(m.Sender.QQ).Plain(menu.c_str()));
+
+				}
+
 				if (MessageCheck(plain))
 				{
 					if (MessageLimit(plain, m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64(), admin))
@@ -167,14 +200,14 @@ int main()
 						for (int i = 1; i <= max_send; i++)
 						{
 							vector<string> yand;
-							yand = yande(plain, d["是否使用代理"].GetBool(), d["http"].GetString(), d["https"].GetString(), d["发送原图"].GetBool(), m.Sender.Group.GID.ToInt64());
+							yand = yande(plain, d["是否使用代理"].GetBool(), d["proxy"].GetString(), d["发送原图"].GetBool(), m.Sender.Group.GID.ToInt64());
 
 							if (yand.size() == 1) m.Reply(MessageChain().Plain(yand[0]));
 							else
 							{
 								//发送图片并处理发送完成事宜
 								//处理优先级：撤回>清除缓存
-								if (DownloadImg(yand[1],yand[2], d["是否使用代理"].GetBool(), d["http"].GetString(), d["https"].GetString()))
+								if (DownloadImg(yand[1],yand[2], d["是否使用代理"].GetBool(), d["proxy"].GetString()))
 								{
 									GroupImage img = bot.UploadGroupImage(yand[2]);
 									int MsId = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
@@ -200,33 +233,92 @@ int main()
 							}
 						}
 					}
+					else
+					{
+						m.QuoteReply(MessageChain().Plain("要懂得节制哦 QAQ"));
+					}
 					return;
 				}
 			}
 			catch (const std::exception& ex)
 			{
 				cout << ex.what() << endl;
+				bot.SendMessage(QQ_t(d["主人"].GetInt64()), MessageChain().Plain(ex.what()));
 			}
 		});
 
 	bot.On<FriendMessage>(
 		[&](FriendMessage m)
 		{
-			string plain = m.MessageChain.GetPlainText();
-			if (plain == "更新tag" && m.Sender.QQ.ToInt64() == d["主人"].GetInt64()) {
-				string tag;
-				m.QuoteReply(MessageChain().Plain("更新中..."));
-				if (d["是否使用代理"].GetBool())
-					tag = MessageReload(true, d["http"].GetString(), d["https"].GetString());
-				else
-					tag = MessageReload(false, d["http"].GetString(), d["https"].GetString());
-				if (tag == "ok")m.QuoteReply(MessageChain().Plain("更新完成"));
-				else
+			try
+			{
+				auto plain = m.MessageChain;
+				if (plain.GetPlainText() == "更新tag" && m.Sender.QQ.ToInt64() == d["主人"].GetInt64()) 
 				{
-					tag = "更新出错，出错的tag有:\n" + tag;
-					m.Reply(MessageChain().Plain(tag));
+					string tag;
+					m.QuoteReply(MessageChain().Plain("更新中..."));
+					if (d["是否使用代理"].GetBool())
+						tag = MessageReload(true, d["proxy"].GetString());
+					else
+						tag = MessageReload(false, d["proxy"].GetString());
+					if (tag == "ok")m.QuoteReply(MessageChain().Plain("更新完成"));
+					else
+					{
+						tag = "更新出错，出错的tag有:\n" + tag;
+						m.Reply(MessageChain().Plain(tag));
+					}
+					return;
 				}
-				return;
+
+			
+				Document img;
+				img.Parse(plain.ToString().c_str());
+				if (strstr(Pointer("/0/type").Get(img)->GetString(), "Image"))
+				{
+					Document p;
+					p = a2d_search(d["是否使用代理"].GetBool(), d["proxy"].GetString(), Pointer("/0/url").Get(img)->GetString());
+					if (Pointer("/code").Get(p)->GetInt() != 0)
+					{
+						m.Reply(MessageChain().Plain("搜索出错了，请稍后重试"));
+						return;
+					}
+					if (DownloadImg(Pointer("/color/url").Get(p)->GetString(), Pointer("/color/name").Get(p)->GetString(), d["是否使用代理"].GetBool(), d["proxy"].GetString()) && DownloadImg(Pointer("/bovw/url").Get(p)->GetString(), Pointer("/bovw/name").Get(p)->GetString(), d["是否使用代理"].GetBool(), d["proxy"].GetString()))
+					{
+						string repl_color, repl_bovw;
+						FriendImage img_clolr = bot.UploadFriendImage(Pointer("/color/name").Get(p)->GetString());
+						FriendImage img_bovw = bot.UploadFriendImage(Pointer("/bovw/name").Get(p)->GetString());
+						repl_color = Pointer("/color/pic/name").Get(p)->GetString();
+						repl_color = repl_color + "\n原图地址:" + Pointer("/color/pic/url").Get(p)->GetString() + "\nAuthor:" + Pointer("/color/user/url").Get(p)->GetString();
+						repl_bovw = Pointer("/bovw/pic/name").Get(p)->GetString();
+						repl_bovw = repl_bovw + "\n原图地址:" + Pointer("/bovw/pic/url").Get(p)->GetString() + "\nAuthor:" + Pointer("/bovw/user/url").Get(p)->GetString();
+						m.Reply(MessageChain().Plain("色调搜索结果:").Image(img_clolr).Plain(repl_color));
+						m.Reply(MessageChain().Plain("特征搜索结果:").Image(img_bovw).Plain(repl_bovw));
+
+						if (!d["是否缓存图片"].GetBool())
+						{
+							_sleep(5 * 1000);
+							remove(Pointer("/color/name").Get(p)->GetString());
+							remove(Pointer("/bovw/name").Get(p)->GetString());
+						}
+					}
+					else
+					{
+						m.Reply(MessageChain().Plain("网络错误，搜索结果可能不包含图片"));
+						string repl_color, repl_bovw;
+						repl_color = Pointer("/color/pic/name").Get(p)->GetString();
+						repl_color = repl_color + "\n原图地址:" + Pointer("/color/pic/url").Get(p)->GetString() + "\nAuthor:" + Pointer("/color/user/url").Get(p)->GetString();
+						repl_bovw = Pointer("/bovw/pic/name").Get(p)->GetString();
+						repl_bovw = repl_bovw + "\n原图地址:" + Pointer("/bovw/pic/url").Get(p)->GetString() + "\nAuthor:" + Pointer("/bovw/user/url").Get(p)->GetString();
+						m.Reply(MessageChain().Plain("色调搜索结果:").Plain(repl_color));
+						m.Reply(MessageChain().Plain("特征搜索结果:").Plain(repl_bovw));
+					}
+					return;
+				}
+			}
+			catch (const std::exception& err)
+			{
+				cout << err.what();
+				bot.SendMessage(QQ_t(d["主人"].GetInt64()), MessageChain().Plain(err.what()));
 			}
 		});
 

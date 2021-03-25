@@ -1,23 +1,54 @@
-#pragma once
-#include "message.h"
+#include "../include/message.h"
 
-#include <boost/property_tree/ptree.hpp>  
-#include <boost/property_tree/ini_parser.hpp> 
-
-#include <cpr/cpr.h>
-
-#include <iostream>
-#include <windows.h>
-#include <stdio.h>
-#include <fstream>
-#include <string>
-#include <regex>
-#include <time.h>
-
-using namespace std;
-using namespace cpr;
-using namespace boost::property_tree;
-
+bool StartCheck()
+{
+	//检测并创建文件夹
+	if (_access("./temp", 0) == -1)_mkdir("./temp");
+	if (_access("./config", 0) == -1)_mkdir("./config");
+	if (_access("./config/data", 0) == -1)_mkdir("./config/data");
+	//检查dll
+	if (access("./libcurl.dll", 0) == -1)
+	{
+		if (system("curl http://101.37.245.179:8000/down/k3b5es2COdMe --output libcurl.dll")!=0)
+		{
+			return false;
+		}
+	}
+	if (access("./zlib1.dll", 0) == -1)
+	{
+		if (system("curl http://101.37.245.179:8000/down/LI5W5ABlEfKi --output zlib1.dll") != 0)
+		{
+			return false;
+		}
+	}
+	//文件不存在自动创建
+	fstream fs1, fs2, fs3;
+	fs1.open("./config/data/member.ini", ios::in);
+	fs2.open("./config/data/group.ini", ios::in);
+	fs3.open("./temp/num.ini", ios::in);
+	if (!fs1)
+	{
+		ofstream fout("./config/data/member.ini");
+		if (fout) fout.close();
+	}
+	else
+		fs1.close();
+	if (!fs2)
+	{
+		ofstream fout("./config/data/group.ini");
+		if (fout) fout.close();
+	}
+	else
+		fs2.close();
+	if (!fs3)
+	{
+		ofstream fout("./temp/num.ini");
+		if (fout) fout.close();
+	}
+	else
+		fs3.close();
+	return true;
+}
 
 bool MessageCheck(string plain)
 {
@@ -34,7 +65,7 @@ bool MessageCheck(string plain)
 	return 0;
 }
 
-string MessageReload(bool proxy, string http, string https)
+string MessageReload(bool proxy, string https)
 {
 	SetConsoleOutputCP(65001);
 	ptree pt;
