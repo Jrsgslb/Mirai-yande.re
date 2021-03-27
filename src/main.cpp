@@ -140,6 +140,7 @@ int main()
 					GroupImage cos;
 					cos.Url = "https://api.jrsgslb.cn/cos/url.php?return=img";
 					m.Reply(MessageChain().Image(cos));
+					return;
 				}
 
 				if (plain == "更新tag" && m.Sender.QQ.ToInt64() == d["主人"].GetInt64()) {
