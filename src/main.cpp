@@ -135,6 +135,13 @@ int main()
 				if (adminer == "ADMINISTRATOR" || adminer == "OWNER" || m.Sender.QQ.ToInt64() == d["主人"].GetInt64()) admin = true;
 				else admin = false;
 
+				if (plain == "随机cos")
+				{
+					GroupImage cos;
+					cos.Url = "https://api.jrsgslb.cn/cos/url.php?return=img";
+					m.Reply(MessageChain().Image(cos));
+				}
+
 				if (plain == "更新tag" && m.Sender.QQ.ToInt64() == d["主人"].GetInt64()) {
 					string tag;
 					m.QuoteReply(MessageChain().Plain("更新中..."));
