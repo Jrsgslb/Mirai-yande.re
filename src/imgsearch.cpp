@@ -19,7 +19,7 @@ Document a2d_search(bool proxy, string https, string url)
 		}
 		//正则匹配图片hash和色调搜索结果
 		regex search_hash("class='hash'>(.*?)<");
-		regex search_res("<a target=\"_blank\" rel=\"noopener\" href=\"(.* ?)\">(.*?)<\/a>");
+		regex search_res("<a target=\"_blank\" rel=\"noopener\" href=\"(.* ?)\">(.*?)</a>");
 		smatch hash, res, pic;
 		string::const_iterator iterStart = r.text.begin(), iterEnd = r.text.end();
 		regex_search(r.text, hash, search_hash);
@@ -41,7 +41,7 @@ Document a2d_search(bool proxy, string https, string url)
 		else
 		{
 			string err_info;
-			err_info = s.error.message+ "\n" + r.error.message;
+			err_info = s.error.message + "\n" + r.error.message;
 			Pointer("/code").Set(p, 0);
 			Pointer("/info").Set(p, err_info.c_str());
 			cout << s.status_code << endl << r.status_code << endl;
@@ -66,7 +66,7 @@ Document a2d_search(bool proxy, string https, string url)
 		//色调pic
 		regex_search(r.text, pic, search_pic);
 		file = pic.str(1);
-		file = "./temp/" + file.substr(20,50);
+		file = "./temp/" + file.substr(20, 50);
 		Pointer("/color/name").Set(p, file.c_str());
 		host = "https://ascii2d.net" + pic.str(1);
 		Pointer("/color/url").Set(p, host.c_str());
@@ -92,7 +92,7 @@ Document a2d_search(bool proxy, string https, string url)
 		Pointer("/bovw/pic/name").Set(p, res_author[0].c_str());
 		Pointer("/bovw/user/url").Set(p, res_url[1].c_str());
 		Pointer("/bovw/user/name").Set(p, res_author[1].c_str());
-		
+
 		return p;
 	}
 	catch (const std::exception& err)
@@ -133,12 +133,12 @@ Document snao_search(bool proxy, string https, string url)
 	//解析搜索结果
 	try
 	{
-		regex match_regex("<div class=\"resultsimilarityinfo\">(.*?)%<\/div>");
-		regex search_regex("<table class=\"resulttable\">(.*?)<\/table>");
-		regex img_regex("src=\"(.*?)\"");
-		regex info_regex("<div class=\"resultcontentcolumn\">(.*?)<\/div>");
-		regex title_regex("<strong>(.*?)<\/strong>");
-		regex id_regex("<a href=\"(.*?)\" class=\"linkify\">(.*?)<\/a>");
+		regex match_regex("<div class=\"resultsimilarityinfo\">(.*?)%</div>");
+		regex search_regex("<table class=\"resulttable\">(.*?)</table>");
+		regex img_regex("src=\"([http|https](.*?))\"");
+		regex info_regex("<div class=\"resultcontentcolumn\">(.*?)</div>");
+		regex title_regex("<strong>(.*?)</strong>");
+		regex id_regex("<a href=\"(.*?)\" class=\"linkify\">(.*?)</a>");
 		smatch match_res, id_res, img_res, title_res, search_res, info_res;
 		string res, info, name;
 		regex_search(s.text, search_res, search_regex);//匹配第一个搜索结果
@@ -149,11 +149,25 @@ Document snao_search(bool proxy, string https, string url)
 		regex_search(res, title_res, title_regex);//搜索标题信息
 		info = info_res[0];
 		string::const_iterator strStart = info.begin(), strEnd = info.end();
-		regex_search(strStart, strEnd, id_res, id_regex);//分别搜索画师id信息
-		Pointer("/id").Set(d, id_res.str(1).c_str());
-		strStart = id_res[0].second;
-		regex_search(strStart, strEnd, id_res, id_regex);
-		Pointer("/member").Set(d, id_res.str(1).c_str());
+		//分别搜索画师id信息
+		if (regex_search(strStart, strEnd, id_res, id_regex))
+		{
+			Pointer("/id").Set(d, id_res.str(1).c_str());
+			strStart = id_res[0].second;
+		}
+		else
+		{
+			Pointer("/id").Set(d, "NULL");
+		}
+		if (regex_search(strStart, strEnd, id_res, id_regex))
+		{
+			Pointer("/member").Set(d, id_res.str(1).c_str());
+		}
+		else
+		{
+			Pointer("/member").Set(d, "NULL");
+		}
+		
 		//信息写入json
 		srand((unsigned)time(NULL));
 		name = "./temp/" + to_string(rand());

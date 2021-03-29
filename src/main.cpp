@@ -56,13 +56,13 @@ int main()
 	master = d["主人"].GetInt64();
 
 	//自动登录
-	MiraiBot bot(d["host"].GetString(),port );
+	MiraiBot bot(d["host"].GetString(), port);
 	while (true)
 	{
 		try
 		{
 			bot.Auth(d["key"].GetString(), qq);
-			bot.SendMessage(QQ_t(master),MessageChain().Plain("Bot已上线\n刷新配置文件请重启Mirai-yande"));
+			bot.SendMessage(QQ_t(master), MessageChain().Plain("Bot已上线\n刷新配置文件请重启Mirai-yande"));
 			break;
 		}
 		catch (const std::exception& ex)
@@ -93,6 +93,7 @@ int main()
 						string type = Pointer("/messageChain/0/type").Get(ms)->GetString();
 						if (type == "Image")
 						{
+							cout << Pointer("/messageChain/0/url").Get(ms)->GetString() << endl;
 							Document a2d_json, snao_json;
 							snao_json = snao_search(proxy, proxy_http, Pointer("/messageChain/0/url").Get(ms)->GetString());
 							if (Pointer("/code").Get(snao_json)->GetInt() != 1)
@@ -259,7 +260,7 @@ int main()
 				if (plain == "菜单" || plain == "help")
 				{
 					ifstream in("./config/command.txt");
-					string i,menu;
+					string i, menu;
 					while (getline(in, i))
 					{
 						menu = "\n" + i + menu;
@@ -277,7 +278,7 @@ int main()
 						ptree p;
 						ini_parser::read_ini("./config/rule.ini", p);
 						basic_ptree<string, string> tag = p.get_child(plain);
-						int max_send = tag.get<int>("send",1);
+						int max_send = tag.get<int>("send", 1);
 						for (int i = 1; i <= max_send; i++)
 						{
 							vector<string> yand;
@@ -288,7 +289,7 @@ int main()
 							{
 								//发送图片并处理发送完成事宜
 								//处理优先级：撤回>清除缓存
-								if (DownloadImg(yand[1],yand[2], proxy, proxy_http))
+								if (DownloadImg(yand[1], yand[2], proxy, proxy_http))
 								{
 									GroupImage img = bot.UploadGroupImage(yand[2]);
 									int MsId = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
@@ -335,7 +336,7 @@ int main()
 			{
 				auto plain = m.MessageChain;
 				//tag更新
-				if (plain.GetPlainText() == "更新tag" && m.Sender.QQ.ToInt64() == master) 
+				if (plain.GetPlainText() == "更新tag" && m.Sender.QQ.ToInt64() == master)
 				{
 					string tag;
 					m.QuoteReply(MessageChain().Plain("更新中..."));
@@ -371,6 +372,7 @@ int main()
 							return;
 						}
 					}
+
 					if (stold(Pointer("/match").Get(snao_json)->GetString()) <= 80)
 					{
 						m.Reply(MessageChain().Plain("相似度过低将使用ascii2d搜索"));

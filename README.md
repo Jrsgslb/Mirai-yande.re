@@ -97,7 +97,6 @@ send=3
 编译环境仅测试过`Windows`
 
 使用到的库：
-- Mirai-cpp
 - RapidJSON
 - Boost
 - cpr

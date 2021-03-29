@@ -15,7 +15,7 @@ vector<string> yande(string plain, bool proxy, string https, bool file_url, int6
 	time(&timep);
 	t = localtime(&timep);
 	ini_parser::read_ini("./temp/num.ini", num_time);
-	plain = plain + "." + to_string(t->tm_year + 1900) + "/" + to_string(t->tm_mon +1) + "/" + to_string(t->tm_mday);
+	plain = plain + "." + to_string(t->tm_year + 1900) + "/" + to_string(t->tm_mon + 1) + "/" + to_string(t->tm_mday);
 	int num_num = num_time.get<int>(plain.c_str(), 0) + 1;
 	num_time.put<int>(plain.c_str(), num_num);
 	ini_parser::write_ini("./temp/num.ini", num_time);
@@ -42,9 +42,9 @@ vector<string> yande(string plain, bool proxy, string https, bool file_url, int6
 	Response r;
 	//5 秒超时
 	if (proxy)
-		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Proxies{ {"https", https} }, Timeout{5000});
+		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Proxies{ {"https", https} }, Timeout{ 5000 });
 	else
-		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Timeout{5000});
+		r = Get(Url{ "https://yande.re/post.json" }, Parameters{ {"page", page.c_str()}, {"tags", tags.c_str()}, {"limit","1"} }, Timeout{ 5000 });
 	if (r.status_code != 200)
 	{
 		id_info.push_back("网络错误或tag填写错误");
@@ -53,7 +53,7 @@ vector<string> yande(string plain, bool proxy, string https, bool file_url, int6
 	//读取json
 	Document y;
 	y.Parse(r.text.c_str());
-	string  url, file,rating,r18_temp;
+	string  url, file, rating, r18_temp;
 	int id;
 	id = Pointer("/0/id").Get(y)->GetInt();
 	if (file_url)
