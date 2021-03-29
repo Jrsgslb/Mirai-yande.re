@@ -135,9 +135,12 @@ bool ClearTemp()
 		if (strcmp(findData.name, ".") && strcmp(findData.name, ".."))
 		{
 			file = findData.name;
-			file = "./temp/" + file;
-			cout << "Del:" << findData.name << endl;
-			remove(file.c_str());
+			if (file != "num.ini")
+			{
+				file = "./temp/" + file;
+				cout << "Del:" << findData.name << endl;
+				remove(file.c_str());
+			}
 		}
 	} while (_findnext(handle, &findData) == 0);    // 查找目录中的下一个文件
 	_findclose(handle);    // 关闭搜索句柄
