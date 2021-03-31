@@ -65,56 +65,6 @@ bool MessageCheck(string plain)
 	return 0;
 }
 
-string MessageReload(bool proxy, string https)
-{
-	SetConsoleOutputCP(65001);
-	ptree pt;
-	ini_parser::read_ini("./config/rule.ini", pt);
-
-	basic_ptree<string, string> tag = pt.get_child("");
-
-	string err, comm;
-	//遍历rule.ini
-	for (auto i = tag.begin(); i != tag.end(); i++)
-	{
-		Response r;
-		smatch res;
-		regex reg("<posts count=\"([0-9]*)\" offset=\"([0-9]*)\"");
-		basic_ptree<string, string> temp = pt.get_child((*i).first.data());
-		string tags = temp.get<string>("tag"), txt, num;
-		num = (*i).first.data();
-
-		if (i == tag.begin()) comm = (*i).first.data();
-		else
-			comm = comm + "\n" + (*i).first.data();
-
-		//获取网页并检验状态
-		if (proxy)
-			r = Get(Url{ "https://yande.re/post.xml" }, Parameters{ {"tags", tags.c_str()} }, Proxies{ {"https", https} }, Timeout{10000});
-		else
-			r = Get(Url{ "https://yande.re/post.xml" }, Parameters{ {"tags", tags.c_str()} }, Timeout{10000});
-		if (r.status_code != 200)err = tags + "\n" + err;
-		else
-		{
-			//正则取出次数
-			auto pos = r.text.cbegin();
-			auto end = r.text.cend();
-			for (; regex_search(pos, end, res, reg); pos = res.suffix().first) txt = res.str(1);
-			//写入文件
-			num = num + ".num";
-			pt.put<string>(num.c_str(), txt.c_str());
-			ini_parser::write_ini("./config/rule.ini", pt);
-		}
-	}
-
-	FILE* tem = fopen("./config/command.txt", "w");
-	fprintf(tem, "%s", comm.c_str());
-	fclose(tem);
-
-	if (!err.empty())return err;
-	else return "ok";
-}
-
 bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 {
 	SetConsoleOutputCP(65001);

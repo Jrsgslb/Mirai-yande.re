@@ -5,11 +5,8 @@
 #include <fstream>
 #include <time.h>
 #include <stdio.h>
-#include <vector>
 #include <regex>
 #include <io.h>
-
-#include <cpr/cpr.h>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp> 
@@ -20,6 +17,5 @@
 #include <rapidjson/filereadstream.h>
 
 using namespace std;
-using namespace cpr;
 using namespace boost::property_tree;
 using namespace rapidjson;

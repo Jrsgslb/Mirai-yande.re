@@ -82,6 +82,75 @@ int main()
 				auto qms = mc.GetAll<QuoteMessage>();
 				string plain = mc.GetPlainText(), adminer = GroupPermissionStr(m.Sender.Permission);
 				bool admin;
+				//发送者权限判断
+				if (adminer == "ADMINISTRATOR" || adminer == "OWNER" || m.Sender.QQ.ToInt64() == master)
+				{
+					admin = true;
+				}
+				else 
+				{
+					admin = false;
+				}
+				//随机cos
+				if (plain == "随机cos")
+				{
+					GroupImage cos;
+					cos.Url = "https://api.jrsgslb.cn/cos/url.php?return=img";
+					m.Reply(MessageChain().Image(cos));
+					return;
+				}
+				//更新tag
+				if (plain == "更新tag" && m.Sender.QQ.ToInt64() == master) {
+					string tag;
+					m.QuoteReply(MessageChain().Plain("更新中..."));
+					if (proxy)
+						tag = MessageReload(true, proxy_http);
+					else
+						tag = MessageReload(false, proxy_http);
+					if (tag == "ok")m.QuoteReply(MessageChain().Plain("更新完成"));
+					else
+					{
+						tag = "更新出错，出错的tag有:\n" + tag;
+						m.Reply(MessageChain().Plain(tag));
+					}
+					return;
+				}
+				//缓存清理
+				if (plain == "清理缓存" && m.Sender.QQ.ToInt64() == master)
+				{
+					if (ClearTemp()) m.QuoteReply(MessageChain().Plain("清理成功"));
+					else
+						m.QuoteReply(MessageChain().Plain("清理失败"));
+					return;
+				}
+				//R18开启
+				if (plain == d["R18开启"].GetString() && admin)
+				{
+					if (MessageR18(m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64(), true))
+						m.QuoteReply(MessageChain().Plain("开启成功"));
+					else
+						m.QuoteReply(MessageChain().Plain("请勿重复开启哦"));
+				}
+				//R18关闭
+				if (plain == d["R18关闭"].GetString() && admin)
+				{
+					if (MessageR18(m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64(), false))
+						m.QuoteReply(MessageChain().Plain("关闭成功"));
+					else
+						m.QuoteReply(MessageChain().Plain("请勿重复关闭哦"));
+				}
+				//菜单指令
+				if (plain == "菜单" || plain == "help")
+				{
+					ifstream in("./config/command.txt");
+					string i, menu;
+					while (getline(in, i))
+					{
+						menu = "\n" + i + menu;
+					}
+					m.Reply(MessageChain().At(m.Sender.QQ).Plain(menu.c_str()));
+
+				}
 				//引用回复消息
 				if (!qms.empty())
 				{
@@ -93,7 +162,6 @@ int main()
 						string type = Pointer("/messageChain/0/type").Get(ms)->GetString();
 						if (type == "Image")
 						{
-							cout << Pointer("/messageChain/0/url").Get(ms)->GetString() << endl;
 							Document a2d_json, snao_json;
 							snao_json = snao_search(proxy, proxy_http, Pointer("/messageChain/0/url").Get(ms)->GetString());
 							if (Pointer("/code").Get(snao_json)->GetInt() != 1)
@@ -203,70 +271,6 @@ int main()
 							}
 						}
 					}
-					return;
-				}
-				//发送者权限判断
-				if (adminer == "ADMINISTRATOR" || adminer == "OWNER" || m.Sender.QQ.ToInt64() == master) admin = true;
-				else admin = false;
-				//随机cos
-				if (plain == "随机cos")
-				{
-					GroupImage cos;
-					cos.Url = "https://api.jrsgslb.cn/cos/url.php?return=img";
-					m.Reply(MessageChain().Image(cos));
-					return;
-				}
-				//更新tag
-				if (plain == "更新tag" && m.Sender.QQ.ToInt64() == master) {
-					string tag;
-					m.QuoteReply(MessageChain().Plain("更新中..."));
-					if (proxy)
-						tag = MessageReload(true, proxy_http);
-					else
-						tag = MessageReload(false, proxy_http);
-					if (tag == "ok")m.QuoteReply(MessageChain().Plain("更新完成"));
-					else
-					{
-						tag = "更新出错，出错的tag有:\n" + tag;
-						m.Reply(MessageChain().Plain(tag));
-					}
-					return;
-				}
-				//缓存清理
-				if (plain == "清理缓存" && m.Sender.QQ.ToInt64() == master)
-				{
-					if (ClearTemp()) m.QuoteReply(MessageChain().Plain("清理成功"));
-					else
-						m.QuoteReply(MessageChain().Plain("清理失败"));
-					return;
-				}
-				//R18开启
-				if (plain == d["R18开启"].GetString() && admin)
-				{
-					if (MessageR18(m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64(), true))
-						m.QuoteReply(MessageChain().Plain("开启成功"));
-					else
-						m.QuoteReply(MessageChain().Plain("请勿重复开启哦"));
-				}
-				//R18关闭
-				if (plain == d["R18关闭"].GetString() && admin)
-				{
-					if (MessageR18(m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64(), false))
-						m.QuoteReply(MessageChain().Plain("关闭成功"));
-					else
-						m.QuoteReply(MessageChain().Plain("请勿重复关闭哦"));
-				}
-				//菜单指令
-				if (plain == "菜单" || plain == "help")
-				{
-					ifstream in("./config/command.txt");
-					string i, menu;
-					while (getline(in, i))
-					{
-						menu = "\n" + i + menu;
-					}
-					m.Reply(MessageChain().At(m.Sender.QQ).Plain(menu.c_str()));
-
 				}
 				//自定义发图
 				if (MessageCheck(plain))
@@ -281,18 +285,35 @@ int main()
 						int max_send = tag.get<int>("send", 1);
 						for (int i = 1; i <= max_send; i++)
 						{
-							vector<string> yand;
-							yand = yande(plain, proxy, proxy_http, d["发送原图"].GetBool(), m.Sender.Group.GID.ToInt64());
+							Document yand;
+							yand = yande(plain, proxy, proxy_http, m.Sender.Group.GID.ToInt64());
 
-							if (yand.size() == 1) m.Reply(MessageChain().Plain(yand[0]));
+							if (Pointer("/code").Get(yand)->GetInt() == 0) m.Reply(MessageChain().Plain(Pointer("/info").Get(yand)->GetString()));
 							else
 							{
 								//发送图片并处理发送完成事宜
 								//处理优先级：撤回>清除缓存
-								if (DownloadImg(yand[1], yand[2], proxy, proxy_http))
+								string name, id, url;
+								id = to_string(Pointer("/id").Get(yand)->GetInt());
+								if (d["发送原图"].GetBool())
 								{
-									GroupImage img = bot.UploadGroupImage(yand[2]);
+									name = "./temp/" + id + "." + Pointer("/file/ext").Get(yand)->GetString();
+									url = Pointer("/file/url").Get(yand)->GetString();
+								}
+								else
+								{
+									name = "./temp/" + id + ".jpg";
+									url = Pointer("/sample/url").Get(yand)->GetString();
+								}
+								if (DownloadImg(url, name, proxy, proxy_http))
+								{
+									GroupImage img = bot.UploadGroupImage(name);
 									int MsId = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
+									if (d["发送图片ID"].GetBool())
+									{
+										id = "Y站图片ID：" + id;
+										bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain(id), MsId);
+									}
 
 									if (d["是否撤回"].GetBool())
 									{
@@ -303,9 +324,8 @@ int main()
 									if (!d["是否缓存图片"].GetBool())
 									{
 										_sleep(5 * 1000);
-										remove(yand[2].c_str());
+										remove(name.c_str());
 									}
-									yand.clear();
 								}
 								else
 								{

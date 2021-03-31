@@ -1,4 +1,7 @@
 #include "../include/imgsearch.h"
+#include <cpr/cpr.h>
+
+using namespace cpr;
 
 Document a2d_search(bool proxy, string https, string url)
 {
@@ -11,11 +14,11 @@ Document a2d_search(bool proxy, string https, string url)
 		Response r, s;
 		if (proxy)
 		{
-			r = Get(Url{ host }, Proxies{ {"https", https} }, Timeout{ 5000 });
+			r = Get(Url{ host }, Proxies{ {"https", https} }, Timeout{ 10000 });
 		}
 		else
 		{
-			r = Get(Url{ host }, Timeout{ 5000 });
+			r = Get(Url{ host }, Timeout{ 10000 });
 		}
 		//正则匹配图片hash和色调搜索结果
 		regex search_hash("class='hash'>(.*?)<");
@@ -113,11 +116,11 @@ Document snao_search(bool proxy, string https, string url)
 	url = "url=" + url;
 	if (proxy)
 	{
-		s = Post(Url{ "https://saucenao.com/search.php" }, Body{ url }, Proxies{ {"https", https} }, Timeout{ 5000 });
+		s = Post(Url{ "https://saucenao.com/search.php" }, Body{ url }, Proxies{ {"https", https} }, Timeout{ 10000 });
 	}
 	else
 	{
-		s = Post(Url{ "https://saucenao.com/search.php" }, Body{ url }, Timeout{ 5000 });
+		s = Post(Url{ "https://saucenao.com/search.php" }, Body{ url }, Timeout{ 10000 });
 	}
 	if (s.status_code != 200)
 	{
