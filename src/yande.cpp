@@ -8,15 +8,15 @@
 
 using namespace cpr;
 
-Document yande(string plain, bool proxy, string https, int64_t group_num)
+Document yande(string plain, bool proxy, string https, int64_t group_num, bool first)
 {
-	int num;
+	int num, num_num;
 	Document id_info;
 	//读取tag信息
 	ptree p, num_time;
 	ini_parser::read_ini("./config/rule.ini", p);
 	basic_ptree<string, string> tag = p.get_child(plain);
-	string tags = tag.get<string>("tag");
+	string tags = tag.get<string>("tag"), plain_str;
 
 	time_t timep;
 	struct tm* t;
@@ -24,10 +24,14 @@ Document yande(string plain, bool proxy, string https, int64_t group_num)
 	t = localtime(&timep);
 	//写入调用次数
 	ini_parser::read_ini("./temp/num.ini", num_time);
-	plain = plain + "." + to_string(t->tm_year + 1900) + "/" + to_string(t->tm_mon + 1) + "/" + to_string(t->tm_mday);
-	int num_num = num_time.get<int>(plain.c_str(), 0) + 1;
-	num_time.put<int>(plain.c_str(), num_num);
-	ini_parser::write_ini("./temp/num.ini", num_time);
+	num_num = num_time.get<int>(plain_str.c_str(), 0);
+	if (first)
+	{
+		plain_str = plain + "." + to_string(t->tm_year + 1900) + "/" + to_string(t->tm_mon + 1) + "/" + to_string(t->tm_mday);
+		num_num = num_time.get<int>(plain_str.c_str(), 0) + 1;
+		num_time.put<int>(plain_str.c_str(), num_num);
+		ini_parser::write_ini("./temp/num.ini", num_time);
+	}
 	//老图片过滤机制
 	if (tag.get<int>("num") >= 1000)
 	{
@@ -71,11 +75,19 @@ Document yande(string plain, bool proxy, string https, int64_t group_num)
 	r18_temp = to_string(group_num) + ".R18";
 	if (rating < tag.get<string>("rating") && !r18.get<bool>(r18_temp.c_str(), false))
 	{
-		Pointer("/code").Set(id_info, 0);
-		Pointer("/info").Set(id_info, "这张图片不适合在本群观看哦");
+		//递归大法好
+		id_info = yande(plain, proxy, https, group_num, false);
 		return id_info;
 	}
 	//push数据
+	if (tag.get<int>("send", 1) > 1)
+	{
+		Pointer("/count").Set(id_info, tag.get<int>("send", 1));
+	}
+	else
+	{
+		Pointer("/count").Set(id_info, 1);
+	}
 	Pointer("/code").Set(id_info, 1);
 	Pointer("/file/url").Set(id_info, Pointer("/0/file_url").Get(y)->GetString());
 	Pointer("/file/ext").Set(id_info, Pointer("/0/file_ext").Get(y)->GetString());

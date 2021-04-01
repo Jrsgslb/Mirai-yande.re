@@ -5,6 +5,7 @@
 #include "../include/message.h"
 #include "../include/imgsearch.h"
 #include <rapidjson\writer.h>
+#include <future>
 
 
 int main()
@@ -92,7 +93,7 @@ int main()
 					admin = false;
 				}
 				//随机cos
-				if (plain == "随机cos")
+				if (plain == "随机cos" && MessageLimit("随机cos",m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64(), admin))
 				{
 					GroupImage cos;
 					cos.Url = "https://api.jrsgslb.cn/cos/url.php?return=img";
@@ -278,21 +279,16 @@ int main()
 					if (MessageLimit(plain, m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64(), admin))
 					{
 						m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
-						//获取tag信息
-						ptree p;
-						ini_parser::read_ini("./config/rule.ini", p);
-						basic_ptree<string, string> tag = p.get_child(plain);
-						int max_send = tag.get<int>("send", 1);
+						Document yand;
+						yand = yande(plain, proxy, proxy_http, m.Sender.Group.GID.ToInt64(), true);
+						int max_send = Pointer("/count").Get(yand)->GetInt(), MsId[256];
 						for (int i = 1; i <= max_send; i++)
 						{
-							Document yand;
-							yand = yande(plain, proxy, proxy_http, m.Sender.Group.GID.ToInt64());
-
 							if (Pointer("/code").Get(yand)->GetInt() == 0) m.Reply(MessageChain().Plain(Pointer("/info").Get(yand)->GetString()));
 							else
 							{
 								//发送图片并处理发送完成事宜
-								//处理优先级：撤回>清除缓存
+								//处理优先级：撤回<清除缓存
 								string name, id, url;
 								id = to_string(Pointer("/id").Get(yand)->GetInt());
 								if (d["发送原图"].GetBool())
@@ -308,17 +304,11 @@ int main()
 								if (DownloadImg(url, name, proxy, proxy_http))
 								{
 									GroupImage img = bot.UploadGroupImage(name);
-									int MsId = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
+									MsId[i] = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
 									if (d["发送图片ID"].GetBool())
 									{
 										id = "Y站图片ID：" + id;
-										bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain(id), MsId);
-									}
-
-									if (d["是否撤回"].GetBool())
-									{
-										_sleep(d["撤回延时"].GetInt() * 1000);
-										bot.Recall(MsId);
+										bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain(id), MsId[i]);
 									}
 
 									if (!d["是否缓存图片"].GetBool())
@@ -332,6 +322,18 @@ int main()
 									m.QuoteReply(MessageChain().Plain("网络错误"));
 									return;
 								}
+								if (i != max_send)
+								{
+									yand = yande(plain, proxy, proxy_http, m.Sender.Group.GID.ToInt64(), true);
+								}
+							}
+						}
+						if (d["是否撤回"].GetBool())
+						{
+							_sleep(d["撤回延时"].GetInt() * 1000);
+							for (int i = 1; i <= max_send; i++)
+							{
+								bot.Recall(MsId[i]);
 							}
 						}
 					}
