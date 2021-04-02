@@ -152,6 +152,39 @@ int main()
 					m.Reply(MessageChain().At(m.Sender.QQ).Plain(menu.c_str()));
 
 				}
+				//yid
+				if (strstr(plain.c_str(), d["yid"].GetString()))
+				{
+					regex id_regex("([0-9]{1,12})");
+					cmatch id_res;
+					if (regex_search(plain.c_str(),id_res , id_regex))
+					{
+						Document yid_info;
+						m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
+						yid_info = yid(id_res.str(1), proxy, proxy_http, m.Sender.Group.GID.ToInt64());
+						if (Pointer("/code").Get(yid_info)->GetInt() == 0)
+						{
+							m.QuoteReply(MessageChain().Plain(Pointer("/info").Get(yid_info)->GetString()));
+							return;
+						}
+						if (DownloadImg(Pointer("/url").Get(yid_info)->GetString(), Pointer("/name").Get(yid_info)->GetString(), proxy, proxy_http))
+						{
+							GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(yid_info)->GetString());
+							m.Reply(MessageChain().Image(img));
+							if (!d["是否缓存图片"].GetBool())
+							{
+								_sleep(3 * 1000);
+								remove(Pointer("/name").Get(yid_info)->GetString());
+							}
+							return;
+						}
+						else
+						{
+							m.QuoteReply(MessageChain().Plain("网络错误"));
+							return;
+						}
+					}
+				}
 				//引用回复消息
 				if (!qms.empty())
 				{
@@ -310,10 +343,9 @@ int main()
 										id = "Y站图片ID：" + id;
 										bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain(id), MsId[i]);
 									}
-
 									if (!d["是否缓存图片"].GetBool())
 									{
-										_sleep(5 * 1000);
+										_sleep(1 * 1000);
 										remove(name.c_str());
 									}
 								}
@@ -346,6 +378,7 @@ int main()
 			}
 			catch (const std::exception& ex)
 			{
+				system("");
 				cout << ex.what() << endl;
 				bot.SendMessage(QQ_t(master), MessageChain().Plain(ex.what()));
 			}

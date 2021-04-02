@@ -96,6 +96,83 @@ Document yande(string plain, bool proxy, string https, int64_t group_num, bool f
 	return id_info;
 }
 
+Document yid(string id, bool proxy, string https, int64_t group_num)
+{
+	Document info;
+	Response r;
+	string url, rating, r18_temp, name;
+	url = "https://yande.re/post/show/" + id;
+	//访问id页面
+	if (proxy)
+	{
+		r = Get(Url{ url }, Proxies{ {"https", https} }, Timeout{ 10000 });
+	}
+	else
+	{
+		r = Get(Url{ url }, Timeout{ 10000 });
+	}
+
+	if (r.status_code != 200)
+	{
+		Pointer("/code").Set(info, 0);
+		Pointer("/info").Set(info, r.error.message.c_str());
+		return info;
+	}
+	else
+	{
+		Pointer("/code").Set(info, 1);
+	}
+
+	//正则查找
+	regex rating_regex("Rating: (.*?) <span class=\"vote-desc\">");
+	regex png_img_regex("<a class=\"original-file-unchanged\" id=\"([a-z]{3,4})\" href=\"(.*?)\">");
+	regex file_img_regex("<a class=\"original-file-changed\" id=\"highres\" href=\"(.*?)\">");
+	cmatch rating_res, png_img_res, file_img_res;
+
+	regex_search(r.text.c_str(), rating_res, rating_regex);
+	rating = rating_res[1];
+	if (rating == "Safe")
+	{
+		rating = "s";
+	}
+	else if (rating == "Questionable")
+	{
+		rating = "q";
+	}
+	else if (rating == "Explicit")
+	{
+		rating = "e";
+	}
+	else
+	{
+		Pointer("/code").Set(info, 0);
+		Pointer("/info").Set(info, "鬼知道出了什么错？？？");
+		return info;
+	}
+	ptree r18;
+	ini_parser::read_ini("./config/data/group.ini", r18);
+	r18_temp = to_string(group_num) + ".R18";
+	if (rating == "e" && !r18.get<bool>(r18_temp.c_str(), false))
+	{
+		Pointer("/code").Set(info, 0);
+		Pointer("/info").Set(info, "这张图片为限制图片，不能看哦~");
+		return info;
+	}
+	Pointer("/rating").Set(info, rating.c_str());
+	if (!regex_search(r.text.c_str(), png_img_res, png_img_regex))
+	{
+		regex_search(r.text.c_str(), file_img_res, file_img_regex);
+		name = "./temp/" + id + ".jpg";
+		Pointer("/name").Set(info, name.c_str());
+		Pointer("/url").Set(info, file_img_res.str(1).c_str());
+		return info;
+	}
+	name = "./temp/" + id + "." + png_img_res.str(1);
+	Pointer("/name").Set(info, name.c_str());
+	Pointer("/url").Set(info, png_img_res.str(2).c_str());
+	return info;
+}
+
 //获取13位时间戳
 static __int64 GetUnixTime()
 {
