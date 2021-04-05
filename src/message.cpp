@@ -1,4 +1,18 @@
 #include "../include/message.h"
+#include <iostream>
+#include <fstream>
+#include <regex>
+#include <io.h>
+
+#include <direct.h>
+
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp> 
+
+#include <rapidjson/pointer.h>
+#include <rapidjson/filereadstream.h>
+
+using namespace boost::property_tree;
 
 bool StartCheck()
 {
@@ -52,7 +66,6 @@ bool StartCheck()
 
 bool MessageCheck(string plain)
 {
-    SetConsoleOutputCP(65001);
     ifstream in("./config/command.txt");
     string line;
 	while (getline(in, line))
@@ -67,7 +80,6 @@ bool MessageCheck(string plain)
 
 bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 {
-	SetConsoleOutputCP(65001);
 	ifstream in1("./config/群白名单.txt"), in2("./config/白名单.txt");
 	string line1, line2;
 	//群白名单验证
@@ -90,7 +102,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 	//迭代器声明
 	string::const_iterator ben = str.begin(); 
 	string::const_iterator end = str.end();
-	bool member_ini;
+	bool member_ini = false;
 	while (regex_search(ben, end, res, reg))
 	{
 		temp = res[0];
@@ -473,4 +485,24 @@ bool MessageR18(int64_t qq_num, int64_t group_num, bool R18)
 		ini_parser::write_ini("./config/data/group.ini", r18);
 		return true;
 	}
+}
+
+Document ReloadConfig()
+{
+	FILE* fp = fopen("./config.json", "rb");
+
+	if (fp == NULL)
+	{
+		cout << "Error reading configuration file, please check whether the configuration file exists.\n";
+		system("pause");
+		return 0;
+	}
+
+	char readBuffer[10000];
+	FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+	Document d;
+	d.ParseStream(is);
+
+	fclose(fp);
+	return d;
 }

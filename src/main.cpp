@@ -1,22 +1,29 @@
 ﻿// 注意: 本项目的所有源文件都必须是 UTF-8 编码
-#include <mirai.h>
+#include <iostream>
+#include <string>
 
-#include "../include/yande.h"
-#include "../include/message.h"
-#include "../include/imgsearch.h"
-#include <rapidjson\writer.h>
+#include <rapidjson/pointer.h>
+#include <rapidjson/document.h>
 #include <future>
 
+#include <mirai.h>
+
+#include "../include/Timing.h"
+#include "../include/message.h"
+#include "../include/imgsearch.h"
+#include "../include/yande.h"
 
 int main()
 {
+	using namespace std;
+	using namespace rapidjson;
+	using namespace Cyan;
+
 	if (!StartCheck())
 	{
 		cout << "DLL加载错误";
 		return 0;
 	}
-
-	using namespace Cyan;
 
 
 #if defined(WIN32) || defined(_WIN32)
@@ -26,22 +33,9 @@ int main()
 #endif
 
 	//读取config
+	Document d = ReloadConfig();
 
-	FILE* fp = fopen("./config.json", "rb");
-
-	if (fp == NULL)
-	{
-		cout << "Error reading configuration file, please check whether the configuration file exists.\n";
-		system("pause");
-		return 0;
-	}
-
-	char readBuffer[10000];
-	FileReadStream is(fp, readBuffer, sizeof(readBuffer));
-	Document d;
-	d.ParseStream(is);
-
-	fclose(fp);
+	
 	int64_t port, QQ_num, master;
 
 	port = atoi(d["port"].GetString());
@@ -74,11 +68,15 @@ int main()
 	}
 	cout << "Bot Working..." << endl << "\nAll config files of this program adopt UTF-8 character encoding.\n\nReload the config file, please restart the program...\n\n";
 
+	auto a = async(TimeLoop, d["更新时间"].GetInt(), proxy, proxy_http);
+	cout << "已抛出时钟线程\n";
+
 	bot.On<GroupMessage>(
 		[&](GroupMessage m)
 		{
 			try
 			{
+				m.GetMiraiBot();
 				auto mc = m.MessageChain;
 				auto qms = mc.GetAll<QuoteMessage>();
 				string plain = mc.GetPlainText(), adminer = GroupPermissionStr(m.Sender.Permission);
@@ -91,6 +89,14 @@ int main()
 				else 
 				{
 					admin = false;
+				}
+				//test
+				if (plain == "test")
+				{
+					//cout << Http_Get("https://api.jrsgslb.cn/cos/url.php?return=json", proxy, proxy_http, "1") << endl;
+					m.QuoteReply(MessageChain().Plain("111"));
+
+					return;
 				}
 				//随机cos
 				if (plain == "随机cos" && MessageLimit("随机cos",m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64(), admin))
@@ -167,7 +173,7 @@ int main()
 							m.QuoteReply(MessageChain().Plain(Pointer("/info").Get(yid_info)->GetString()));
 							return;
 						}
-						if (DownloadImg(Pointer("/url").Get(yid_info)->GetString(), Pointer("/name").Get(yid_info)->GetString(), proxy, proxy_http))
+						if (Pointer("/dimg").Get(yid_info)->GetInt() == 1)
 						{
 							GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(yid_info)->GetString());
 							m.Reply(MessageChain().Image(img));
@@ -217,7 +223,7 @@ int main()
 								a2d_json = a2d_search(proxy, proxy_http, Pointer("/messageChain/0/url").Get(ms)->GetString());
 								//先回复snao消息
 								string snao_res;
-								if (DownloadImg(Pointer("/url").Get(snao_json)->GetString(), Pointer("/name").Get(snao_json)->GetString(), proxy, proxy_http))
+								if (Pointer("/dimg").Get(snao_json)->GetInt() == 1)
 								{
 									snao_res = Pointer("/title").Get(snao_json)->GetString();
 									snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "%\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
@@ -251,7 +257,7 @@ int main()
 										return;
 									}
 								}
-								if (DownloadImg(Pointer("/color/url").Get(a2d_json)->GetString(), Pointer("/color/name").Get(a2d_json)->GetString(), proxy, proxy_http) && DownloadImg(Pointer("/bovw/url").Get(a2d_json)->GetString(), Pointer("/bovw/name").Get(a2d_json)->GetString(), proxy, proxy_http))
+								if (Pointer("/dimg").Get(a2d_json)->GetInt() == 1)
 								{
 									string repl_color, repl_bovw;
 									GroupImage img_clolr = bot.UploadGroupImage(Pointer("/color/name").Get(a2d_json)->GetString());
@@ -286,7 +292,7 @@ int main()
 							else
 							{
 								string snao_res;
-								if (DownloadImg(Pointer("/url").Get(snao_json)->GetString(), Pointer("/name").Get(snao_json)->GetString(), proxy, proxy_http))
+								if (Pointer("/dimg").Get(snao_json)->GetInt() == 1)
 								{
 									snao_res = Pointer("/title").Get(snao_json)->GetString();
 									snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
@@ -313,7 +319,7 @@ int main()
 					{
 						m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
 						Document yand;
-						yand = yande(plain, proxy, proxy_http, m.Sender.Group.GID.ToInt64(), true);
+						yand = yande(plain, proxy, proxy_http, m.Sender.Group.GID.ToInt64(), true, d["发送原图"].GetBool());
 						int max_send = Pointer("/count").Get(yand)->GetInt(), MsId[256];
 						for (int i = 1; i <= max_send; i++)
 						{
@@ -322,21 +328,10 @@ int main()
 							{
 								//发送图片并处理发送完成事宜
 								//处理优先级：撤回<清除缓存
-								string name, id, url;
-								id = to_string(Pointer("/id").Get(yand)->GetInt());
-								if (d["发送原图"].GetBool())
+								string id = Pointer("/id").Get(yand)->GetString();
+								if (Pointer("/dimg").Get(yand)->GetInt() == 1)
 								{
-									name = "./temp/" + id + "." + Pointer("/file/ext").Get(yand)->GetString();
-									url = Pointer("/file/url").Get(yand)->GetString();
-								}
-								else
-								{
-									name = "./temp/" + id + ".jpg";
-									url = Pointer("/sample/url").Get(yand)->GetString();
-								}
-								if (DownloadImg(url, name, proxy, proxy_http))
-								{
-									GroupImage img = bot.UploadGroupImage(name);
+									GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(yand)->GetString());
 									MsId[i] = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
 									if (d["发送图片ID"].GetBool())
 									{
@@ -346,7 +341,7 @@ int main()
 									if (!d["是否缓存图片"].GetBool())
 									{
 										_sleep(1 * 1000);
-										remove(name.c_str());
+										remove(Pointer("/name").Get(yand)->GetString());
 									}
 								}
 								else
@@ -356,7 +351,7 @@ int main()
 								}
 								if (i != max_send)
 								{
-									yand = yande(plain, proxy, proxy_http, m.Sender.Group.GID.ToInt64(), true);
+									yand = yande(plain, proxy, proxy_http, m.Sender.Group.GID.ToInt64(), true, d["发送原图"].GetBool());
 								}
 							}
 						}
@@ -378,7 +373,6 @@ int main()
 			}
 			catch (const std::exception& ex)
 			{
-				system("");
 				cout << ex.what() << endl;
 				bot.SendMessage(QQ_t(master), MessageChain().Plain(ex.what()));
 			}
@@ -434,7 +428,7 @@ int main()
 						a2d_json = a2d_search(proxy, proxy_http, Pointer("/0/url").Get(img)->GetString());
 						//先回复snao消息
 						string snao_res;
-						if (DownloadImg(Pointer("/url").Get(snao_json)->GetString(), Pointer("/name").Get(snao_json)->GetString(), proxy, proxy_http))
+						if (Pointer("/dimg").Get(snao_json)->GetInt() == 1)
 						{
 							snao_res = Pointer("/title").Get(snao_json)->GetString();
 							snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "%\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
@@ -468,7 +462,7 @@ int main()
 								return;
 							}
 						}
-						if (DownloadImg(Pointer("/color/url").Get(a2d_json)->GetString(), Pointer("/color/name").Get(a2d_json)->GetString(), proxy, proxy_http) && DownloadImg(Pointer("/bovw/url").Get(a2d_json)->GetString(), Pointer("/bovw/name").Get(a2d_json)->GetString(), proxy, proxy_http))
+						if (Pointer("/dimg").Get(a2d_json)->GetInt() == 1)
 						{
 							string repl_color, repl_bovw;
 							FriendImage img_clolr = bot.UploadFriendImage(Pointer("/color/name").Get(a2d_json)->GetString());
@@ -502,7 +496,7 @@ int main()
 					else
 					{
 						string snao_res;
-						if (DownloadImg(Pointer("/url").Get(snao_json)->GetString(), Pointer("/name").Get(snao_json)->GetString(), proxy, proxy_http))
+						if (Pointer("/dimg").Get(snao_json)->GetInt() == 1)
 						{
 							snao_res = Pointer("/title").Get(snao_json)->GetString();
 							snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();

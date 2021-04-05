@@ -1,7 +1,11 @@
 #include "../include/imgsearch.h"
-#include <cpr/cpr.h>
+#include "../include/HttpRequest.hpp"
 
-using namespace cpr;
+#include <iostream>
+#include <regex>
+
+#include <rapidjson/pointer.h>
+
 
 Document a2d_search(bool proxy, string https, string url)
 {
@@ -9,46 +13,29 @@ Document a2d_search(bool proxy, string https, string url)
 	try
 	{
 		Document p;
-		string host, file;
+		string host, file, color, bovw;
 		host = "https://ascii2d.net/search/url/" + url;
-		Response r, s;
-		if (proxy)
-		{
-			r = Get(Url{ host }, Proxies{ {"https", https} }, Timeout{ 10000 });
-		}
-		else
-		{
-			r = Get(Url{ host }, Timeout{ 10000 });
-		}
+		
+		HttpRequest r;
+		color = r.Http_Get(host, proxy, https);
 		//正则匹配图片hash和色调搜索结果
 		regex search_hash("class='hash'>(.*?)<");
 		regex search_res("<a target=\"_blank\" rel=\"noopener\" href=\"(.* ?)\">(.*?)</a>");
 		smatch hash, res, pic;
-		string::const_iterator iterStart = r.text.begin(), iterEnd = r.text.end();
-		regex_search(r.text, hash, search_hash);
+		string::const_iterator iterStart = color.begin(), iterEnd = color.end();
+		regex_search(color, hash, search_hash);
 		//特征搜索
 		host = "https://ascii2d.net/search/bovw/" + hash.str(1);
-		if (proxy)
-		{
-			s = Get(Url{ host }, Proxies{ {"https", https} }, Timeout{ 10000 });
-		}
-		else
-		{
-			s = Get(Url{ host }, Timeout{ 10000 });
-		}
+		bovw = r.Http_Get(host, proxy, https);
 		//判断状态码
-		if (r.status_code == 200 && s.status_code == 200)
+		if (!color.empty() && !bovw.empty())
 		{
 			Pointer("/code").Set(p, 1);
 		}
 		else
 		{
-			string err_info;
-			err_info = s.error.message + "\n" + r.error.message;
 			Pointer("/code").Set(p, 0);
-			Pointer("/info").Set(p, err_info.c_str());
-			cout << s.status_code << endl << r.status_code << endl;
-			cout << s.error.message << r.error.message;
+			Pointer("/info").Set(p, "发生错误，详见控制台");
 			return p;
 		}
 		//取出色调结果
@@ -67,21 +54,21 @@ Document a2d_search(bool proxy, string https, string url)
 		//正则匹配色调与特征图片url
 		regex search_pic("<img loading=\"lazy\" src=\"(.*?)\"");
 		//色调pic
-		regex_search(r.text, pic, search_pic);
+		regex_search(color, pic, search_pic);
 		file = pic.str(1);
 		file = "./temp/" + file.substr(20, 50);
 		Pointer("/color/name").Set(p, file.c_str());
 		host = "https://ascii2d.net" + pic.str(1);
 		Pointer("/color/url").Set(p, host.c_str());
 		//特征pic
-		regex_search(s.text, pic, search_pic);
+		regex_search(bovw, pic, search_pic);
 		file = pic.str(1);
 		file = "./temp/" + file.substr(20, 50);
 		Pointer("/bovw/name").Set(p, file.c_str());
 		host = "https://ascii2d.net" + pic.str(1);
 		Pointer("/bovw/url").Set(p, host.c_str());
 		//取出特征结果
-		iterStart = s.text.begin(), iterEnd = s.text.end();
+		iterStart = bovw.begin(), iterEnd = bovw.end();
 		res_url.clear();
 		res_author.clear();
 		while (regex_search(iterStart, iterEnd, res, search_res))
@@ -95,7 +82,15 @@ Document a2d_search(bool proxy, string https, string url)
 		Pointer("/bovw/pic/name").Set(p, res_author[0].c_str());
 		Pointer("/bovw/user/url").Set(p, res_url[1].c_str());
 		Pointer("/bovw/user/name").Set(p, res_author[1].c_str());
-
+		//下载图片
+		if (r.DownloadImg(Pointer("/color/url").Get(p)->GetString(), Pointer("/color/name").Get(p)->GetString(), proxy, https) && r.DownloadImg(Pointer("/bovw/url").Get(p)->GetString(), Pointer("/bovw/name").Get(p)->GetString(), proxy, https))
+		{
+			Pointer("/dimg").Set(p, 1);
+		}
+		else
+		{
+			Pointer("/dimg").Set(p, 0);
+		}
 		return p;
 	}
 	catch (const std::exception& err)
@@ -111,22 +106,16 @@ Document a2d_search(bool proxy, string https, string url)
 Document snao_search(bool proxy, string https, string url)
 {
 	Document d;
-	Response s;
+	string txt;
+	HttpRequest r;
 	//搜索图片
 	url = "url=" + url;
-	if (proxy)
+	txt = r.Http_Post("https://saucenao.com/search.php", proxy, https, url);
+
+	if (txt.empty())
 	{
-		s = Post(Url{ "https://saucenao.com/search.php" }, Body{ url }, Proxies{ {"https", https} }, Timeout{ 10000 });
-	}
-	else
-	{
-		s = Post(Url{ "https://saucenao.com/search.php" }, Body{ url }, Timeout{ 10000 });
-	}
-	if (s.status_code != 200)
-	{
-		cout << s.error.message << endl;
 		Pointer("/code").Set(d, 0);
-		Pointer("/info").Set(d, s.error.message.c_str());
+		Pointer("/info").Set(d, "发生错误，详见控制台");
 		return d;
 	}
 	else
@@ -144,7 +133,7 @@ Document snao_search(bool proxy, string https, string url)
 		regex id_regex("<a href=\"(.*?)\" class=\"linkify\">(.*?)</a>");
 		smatch match_res, id_res, img_res, title_res, search_res, info_res;
 		string res, info, name;
-		regex_search(s.text, search_res, search_regex);//匹配第一个搜索结果
+		regex_search(txt, search_res, search_regex);//匹配第一个搜索结果
 		res = search_res.str(1);
 		regex_search(res, match_res, match_regex);//搜索匹配度
 		regex_search(res, img_res, img_regex);//搜索img url
@@ -179,6 +168,15 @@ Document snao_search(bool proxy, string https, string url)
 		Pointer("/match").Set(d, match_res.str(1).c_str());
 		Pointer("/url").Set(d, img_res.str(1).c_str());
 		Pointer("/title").Set(d, title_res.str(1).c_str());
+		//下载图片
+		if (r.DownloadImg(img_res.str(1), name, proxy, https))
+		{
+			Pointer("/dimg").Set(d, 1);
+		}
+		else
+		{
+			Pointer("/dimg").Set(d, 0);
+		}
 		return d;
 	}
 	catch (const std::exception& err)
