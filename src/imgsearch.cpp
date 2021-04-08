@@ -1,4 +1,4 @@
-#include "../include/imgsearch.h"
+ï»¿#include "../include/imgsearch.h"
 #include "../include/HttpRequest.hpp"
 
 #include <iostream>
@@ -7,67 +7,108 @@
 #include <rapidjson/pointer.h>
 
 
-Document a2d_search(bool proxy, string https, string url)
+bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageType type, int64_t id, int msid)
 {
-	//»ñÈ¡É«µ÷ÓëÌØÕ÷ĞÅÏ¢
+	//è·å–è‰²è°ƒä¸ç‰¹å¾ä¿¡æ¯
 	try
 	{
 		Document p;
-		string host, file, color, bovw;
+		string host, file, color, bovw, repl_color, repl_bovw;
 		host = "https://ascii2d.net/search/url/" + url;
-		
+		bool D_img = true, msty = true;
+		//è¾¨è®¤æ¶ˆæ¯
+		if (type == MessageType::GroupMessage)
+		{
+			msty = true;
+		}
+		else if (type == MessageType::FriendMessage)
+		{
+			msty = false;
+		}
+		//GET
 		HttpRequest r;
 		color = r.Http_Get(host, proxy, https);
-		//ÕıÔòÆ¥ÅäÍ¼Æ¬hashºÍÉ«µ÷ËÑË÷½á¹û
+		//æ­£åˆ™åŒ¹é…å›¾ç‰‡hashå’Œè‰²è°ƒæœç´¢ç»“æœ
 		regex search_hash("class='hash'>(.*?)<");
-		regex search_res("<a target=\"_blank\" rel=\"noopener\" href=\"(.* ?)\">(.*?)</a>");
+		regex search_res("rel=\"noopener\" href=\"(.*?)\">(.*?)<");
 		smatch hash, res, pic;
 		string::const_iterator iterStart = color.begin(), iterEnd = color.end();
 		regex_search(color, hash, search_hash);
-		//ÌØÕ÷ËÑË÷
+		//ç‰¹å¾æœç´¢
 		host = "https://ascii2d.net/search/bovw/" + hash.str(1);
 		bovw = r.Http_Get(host, proxy, https);
-		//ÅĞ¶Ï×´Ì¬Âë
-		if (!color.empty() && !bovw.empty())
+		//åˆ¤æ–­çŠ¶æ€ç 
+		if (color.size() < 100 && bovw.size() < 100)
 		{
-			Pointer("/code").Set(p, 1);
+			return false;
 		}
-		else
-		{
-			Pointer("/code").Set(p, 0);
-			Pointer("/info").Set(p, "·¢Éú´íÎó£¬Ïê¼û¿ØÖÆÌ¨");
-			return p;
-		}
-		//È¡³öÉ«µ÷½á¹û
+		//å–å‡ºè‰²è°ƒç»“æœ
 		vector<string> res_url, res_author;
 		while (regex_search(iterStart, iterEnd, res, search_res))
 		{
 			res_url.push_back(res.str(1));
 			res_author.push_back(res.str(2));
-			iterStart = res[0].second; //¸üĞÂËÑË÷ÆğÊ¼Î»ÖÃ£¬ËÑË÷Ê£ÏÂµÄ×Ö·û´®
+			iterStart = res[0].second; //æ›´æ–°æœç´¢èµ·å§‹ä½ç½®ï¼Œæœç´¢å‰©ä¸‹çš„å­—ç¬¦ä¸²
 		}
-		//Ğ´Èë½á¹ûjson
-		Pointer("/color/pic/url").Set(p, res_url[0].c_str());
-		Pointer("/color/pic/name").Set(p, res_author[0].c_str());
-		Pointer("/color/user/url").Set(p, res_url[1].c_str());
-		Pointer("/color/user/name").Set(p, res_author[1].c_str());
-		//ÕıÔòÆ¥ÅäÉ«µ÷ÓëÌØÕ÷Í¼Æ¬url
+		//æ„å»ºæ¶ˆæ¯
+		repl_color = res_author[0] + "\nåŸå›¾åœ°å€:" + res_url[0] + "\nAuthor:" + res_url[1];
+
+		//æ­£åˆ™åŒ¹é…è‰²è°ƒä¸ç‰¹å¾å›¾ç‰‡url
 		regex search_pic("<img loading=\"lazy\" src=\"(.*?)\"");
-		//É«µ÷pic
+		//è‰²è°ƒpic
 		regex_search(color, pic, search_pic);
 		file = pic.str(1);
 		file = "./temp/" + file.substr(20, 50);
-		Pointer("/color/name").Set(p, file.c_str());
 		host = "https://ascii2d.net" + pic.str(1);
-		Pointer("/color/url").Set(p, host.c_str());
-		//ÌØÕ÷pic
+		//ä¸‹è½½å›¾ç‰‡
+		if (!r.DownloadImg(host, file, proxy, https))
+		{
+			D_img = false;
+		}
+		//å‘é€æ¶ˆæ¯
+		if (D_img)
+		{
+			if (msty)
+			{
+				GID_t gid = GID_t(id);
+				GroupImage img = bot.UploadGroupImage(file);
+				bot.SendMessage(gid, MessageChain().Plain("è‰²è°ƒæœç´¢ç»“æœï¼š\n").Image(img).Plain(repl_color), msid);
+			}
+			else
+			{
+				QQ_t gid = QQ_t(id);
+				FriendImage img = bot.UploadFriendImage(file);
+				bot.SendMessage(gid, MessageChain().Plain("è‰²è°ƒæœç´¢ç»“æœï¼š\n").Image(img).Plain(repl_color));
+			}
+		}
+		else
+		{
+			if (msty)
+			{
+				GID_t gid = GID_t(id);
+				GroupImage img = bot.UploadGroupImage(file);
+				bot.SendMessage(gid, MessageChain().Plain("ç½‘ç»œé”™è¯¯ï¼Œç»“æœä¸åŒ…å«å›¾ç‰‡"), msid);
+				bot.SendMessage(gid, MessageChain().Plain("è‰²è°ƒæœç´¢ç»“æœï¼š\n").Plain(repl_color), msid);
+			}
+			else
+			{
+				QQ_t gid = QQ_t(id);
+				FriendImage img = bot.UploadFriendImage(file);
+				bot.SendMessage(gid, MessageChain().Plain("ç½‘ç»œé”™è¯¯ï¼Œç»“æœä¸åŒ…å«å›¾ç‰‡"));
+				bot.SendMessage(gid, MessageChain().Plain("è‰²è°ƒæœç´¢ç»“æœï¼š\n").Plain(repl_color));
+			}
+		}
+		//ç‰¹å¾pic
 		regex_search(bovw, pic, search_pic);
 		file = pic.str(1);
 		file = "./temp/" + file.substr(20, 50);
-		Pointer("/bovw/name").Set(p, file.c_str());
 		host = "https://ascii2d.net" + pic.str(1);
-		Pointer("/bovw/url").Set(p, host.c_str());
-		//È¡³öÌØÕ÷½á¹û
+		//ä¸‹è½½å›¾ç‰‡
+		if (!r.DownloadImg(host, file, proxy, https))
+		{
+			D_img = false;
+		}
+		//å–å‡ºç‰¹å¾ç»“æœ
 		iterStart = bovw.begin(), iterEnd = bovw.end();
 		res_url.clear();
 		res_author.clear();
@@ -75,54 +116,77 @@ Document a2d_search(bool proxy, string https, string url)
 		{
 			res_url.push_back(res.str(1));
 			res_author.push_back(res.str(2));
-			iterStart = res[0].second; //¸üĞÂËÑË÷ÆğÊ¼Î»ÖÃ£¬ËÑË÷Ê£ÏÂµÄ×Ö·û´®
+			iterStart = res[0].second; //æ›´æ–°æœç´¢èµ·å§‹ä½ç½®ï¼Œæœç´¢å‰©ä¸‹çš„å­—ç¬¦ä¸²
 		}
-		//Ğ´Èë½á¹ûjson
-		Pointer("/bovw/pic/url").Set(p, res_url[0].c_str());
-		Pointer("/bovw/pic/name").Set(p, res_author[0].c_str());
-		Pointer("/bovw/user/url").Set(p, res_url[1].c_str());
-		Pointer("/bovw/user/name").Set(p, res_author[1].c_str());
-		//ÏÂÔØÍ¼Æ¬
-		if (r.DownloadImg(Pointer("/color/url").Get(p)->GetString(), Pointer("/color/name").Get(p)->GetString(), proxy, https) && r.DownloadImg(Pointer("/bovw/url").Get(p)->GetString(), Pointer("/bovw/name").Get(p)->GetString(), proxy, https))
+		//æ„å»ºæ¶ˆæ¯
+		repl_bovw = res_author[0] + "\nåŸå›¾åœ°å€:" + res_url[0] + "\nAuthor:" + res_url[1];
+		//å‘é€æ¶ˆæ¯
+		if (D_img)
 		{
-			Pointer("/dimg").Set(p, 1);
+			if (msty)
+			{
+				GID_t gid = GID_t(id);
+				GroupImage img = bot.UploadGroupImage(file);
+				bot.SendMessage(gid, MessageChain().Plain("ç‰¹å¾æœç´¢ç»“æœï¼š\n").Image(img).Plain(repl_bovw), msid);
+			}
+			else
+			{
+				QQ_t gid = QQ_t(id);
+				FriendImage img = bot.UploadFriendImage(file);
+				bot.SendMessage(gid, MessageChain().Plain("ç‰¹å¾æœç´¢ç»“æœï¼š\n").Image(img).Plain(repl_bovw));
+			}
 		}
 		else
 		{
-			Pointer("/dimg").Set(p, 0);
+			if (msty)
+			{
+				GID_t gid = GID_t(id);
+				GroupImage img = bot.UploadGroupImage(file);
+				bot.SendMessage(gid, MessageChain().Plain("ç½‘ç»œé”™è¯¯ï¼Œç»“æœä¸åŒ…å«å›¾ç‰‡"), msid);
+				bot.SendMessage(gid, MessageChain().Plain("ç‰¹å¾æœç´¢ç»“æœï¼š\n").Plain(repl_bovw), msid);
+			}
+			else
+			{
+				QQ_t gid = QQ_t(id);
+				FriendImage img = bot.UploadFriendImage(file);
+				bot.SendMessage(gid, MessageChain().Plain("ç½‘ç»œé”™è¯¯ï¼Œç»“æœä¸åŒ…å«å›¾ç‰‡"));
+				bot.SendMessage(gid, MessageChain().Plain("ç‰¹å¾æœç´¢ç»“æœï¼š\n").Plain(repl_bovw));
+			}
 		}
-		return p;
+		return true;
 	}
 	catch (const std::exception& err)
 	{
-		Document p;
-		Pointer("/code").Set(p, 0);
-		Pointer("/info").Set(p, err.what());
 		cout << err.what() << endl;
-		return p;
+		return false;
 	}
 }
 
-Document snao_search(bool proxy, string https, string url)
+bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageType type, int64_t id, int msid)
 {
 	Document d;
-	string txt;
+	string txt, snao_res, rurl;
 	HttpRequest r;
-	//ËÑË÷Í¼Æ¬
-	url = "url=" + url;
-	txt = r.Http_Post("https://saucenao.com/search.php", proxy, https, url);
+	bool D_img = true,msty = true;
+	//è¾¨è®¤æ¶ˆæ¯
+	GroupImage img;
+	if (type == MessageType::GroupMessage)
+	{
+		msty = true;
+	}
+	else if (type == MessageType::FriendMessage)
+	{
+		msty = false;
+	}
+	//æœç´¢å›¾ç‰‡
+	rurl = "url=" + url;
+	txt = r.Http_Post("https://saucenao.com/search.php", proxy, https, rurl);
 
-	if (txt.empty())
+	if (txt.size() < 200)
 	{
-		Pointer("/code").Set(d, 0);
-		Pointer("/info").Set(d, "·¢Éú´íÎó£¬Ïê¼û¿ØÖÆÌ¨");
-		return d;
+		return false;
 	}
-	else
-	{
-		Pointer("/code").Set(d, 1);
-	}
-	//½âÎöËÑË÷½á¹û
+	//è§£ææœç´¢ç»“æœ
 	try
 	{
 		regex match_regex("<div class=\"resultsimilarityinfo\">(.*?)%</div>");
@@ -131,59 +195,103 @@ Document snao_search(bool proxy, string https, string url)
 		regex info_regex("<div class=\"resultcontentcolumn\">(.*?)</div>");
 		regex title_regex("<strong>(.*?)</strong>");
 		regex id_regex("<a href=\"(.*?)\" class=\"linkify\">(.*?)</a>");
-		smatch match_res, id_res, img_res, title_res, search_res, info_res;
+		regex res_regex("<div class=\"resultmiscinfo\"><a href=\"(.*?)\">(.*?)<\/div>");
+		smatch match_res, id_res, img_res, title_res, search_res, info_res, res_res;
 		string res, info, name;
-		regex_search(txt, search_res, search_regex);//Æ¥ÅäµÚÒ»¸öËÑË÷½á¹û
+		regex_search(txt, search_res, search_regex);//åŒ¹é…ç¬¬ä¸€ä¸ªæœç´¢ç»“æœ
 		res = search_res.str(1);
-		regex_search(res, match_res, match_regex);//ËÑË÷Æ¥Åä¶È
-		regex_search(res, img_res, img_regex);//ËÑË÷img url
-		regex_search(res, info_res, info_regex);//ËÑË÷»­Ê¦ºÍidĞÅÏ¢
-		regex_search(res, title_res, title_regex);//ËÑË÷±êÌâĞÅÏ¢
+		regex_search(res, match_res, match_regex);//æœç´¢åŒ¹é…åº¦
+		regex_search(res, img_res, img_regex);//æœç´¢img url
+		regex_search(res, info_res, info_regex);//æœç´¢ç”»å¸ˆå’Œidä¿¡æ¯
+		regex_search(res, title_res, title_regex);//æœç´¢æ ‡é¢˜ä¿¡æ¯
 		info = info_res[0];
 		string::const_iterator strStart = info.begin(), strEnd = info.end();
-		//·Ö±ğËÑË÷»­Ê¦idĞÅÏ¢
-		if (regex_search(strStart, strEnd, id_res, id_regex))
+
+		snao_res = title_res.str(1) + "\nç›¸ä¼¼åº¦ï¼š" + match_res.str(1) + "%\nå›¾ç‰‡åœ°å€ï¼š";
+		//åˆ†åˆ«æœç´¢ç”»å¸ˆidä¿¡æ¯
+		if (!regex_search(res, res_res, res_regex))
 		{
-			Pointer("/id").Set(d, id_res.str(1).c_str());
-			strStart = id_res[0].second;
+			if (regex_search(strStart, strEnd, id_res, id_regex))
+			{
+				snao_res = snao_res + id_res.str(1) + "\nç”»å¸ˆï¼š";
+				strStart = id_res[0].second;
+			}
+			if (regex_search(strStart, strEnd, id_res, id_regex))
+			{
+				snao_res = snao_res + id_res.str(1);
+			}
 		}
 		else
 		{
-			Pointer("/id").Set(d, "NULL");
-		}
-		if (regex_search(strStart, strEnd, id_res, id_regex))
-		{
-			Pointer("/member").Set(d, id_res.str(1).c_str());
-		}
-		else
-		{
-			Pointer("/member").Set(d, "NULL");
+			snao_res = snao_res + res_res.str(1);
 		}
 		
-		//ĞÅÏ¢Ğ´Èëjson
 		srand((unsigned)time(NULL));
 		name = "./temp/" + to_string(rand());
 		name = name + ".jpg";
-		Pointer("/name").Set(d, name.c_str());
-		Pointer("/match").Set(d, match_res.str(1).c_str());
-		Pointer("/url").Set(d, img_res.str(1).c_str());
-		Pointer("/title").Set(d, title_res.str(1).c_str());
-		//ÏÂÔØÍ¼Æ¬
-		if (r.DownloadImg(img_res.str(1), name, proxy, https))
+		//ä¸‹è½½å›¾ç‰‡
+		if (!r.DownloadImg(img_res.str(1), name, proxy, https))
 		{
-			Pointer("/dimg").Set(d, 1);
+			D_img = false;
+		}
+		//å‘é€æ¶ˆæ¯
+		if (D_img)
+		{
+			if (msty)
+			{
+				GID_t gid = GID_t(id);
+				GroupImage img = bot.UploadGroupImage(name);
+				bot.SendMessage(gid, MessageChain().Image(img).Plain(snao_res), msid);
+				if (stod(match_res.str(1)) < 80)
+				{
+					bot.SendMessage(gid, MessageChain().Plain("ç›¸ä¼¼åº¦è¿‡ä½ï¼Œå°†ä½¿ç”¨ascii2dæœç´¢"), msid);
+					a2d_search(proxy, https, url, bot, type, id, msid);
+				}
+			}
+			else
+			{
+				QQ_t gid = QQ_t(id);
+				FriendImage img = bot.UploadFriendImage(name);
+				bot.SendMessage(gid, MessageChain().Image(img).Plain(snao_res));
+				if (stod(match_res.str(1)) < 80)
+				{
+					bot.SendMessage(gid, MessageChain().Plain("ç›¸ä¼¼åº¦è¿‡ä½ï¼Œå°†ä½¿ç”¨ascii2dæœç´¢"));
+					a2d_search(proxy, https, url, bot, type, id, msid);
+				}
+			}			
 		}
 		else
 		{
-			Pointer("/dimg").Set(d, 0);
+			if (msty)
+			{
+				GID_t gid = GID_t(id);
+				GroupImage img = bot.UploadGroupImage(name);
+				bot.SendMessage(gid, MessageChain().Plain("ç½‘ç»œé”™è¯¯ï¼Œç»“æœä¸åŒ…å«å›¾ç‰‡"), msid);
+				bot.SendMessage(gid, MessageChain().Plain(snao_res), msid);
+				if (stod(match_res.str(1)) < 80)
+				{
+					bot.SendMessage(gid, MessageChain().Plain("ç›¸ä¼¼åº¦è¿‡ä½ï¼Œå°†ä½¿ç”¨ascii2dæœç´¢"), msid);
+					a2d_search(proxy, https, url, bot, type, id, msid);
+				}
+			}
+			else
+			{
+				QQ_t gid = QQ_t(id);
+				FriendImage img = bot.UploadFriendImage(name);
+				bot.SendMessage(gid, MessageChain().Plain("ç½‘ç»œé”™è¯¯ï¼Œç»“æœä¸åŒ…å«å›¾ç‰‡"));
+				bot.SendMessage(gid, MessageChain().Plain(snao_res));
+				if (stod(match_res.str(1)) < 80)
+				{
+					bot.SendMessage(gid, MessageChain().Plain("ç›¸ä¼¼åº¦è¿‡ä½ï¼Œå°†ä½¿ç”¨ascii2dæœç´¢"));
+					a2d_search(proxy, https, url, bot, type, id, msid);
+				}
+			}
 		}
-		return d;
+		return true;
 	}
 	catch (const std::exception& err)
 	{
 		cout << err.what() << endl;
-		Pointer("/code").Set(d, 0);
-		Pointer("/info").Set(d, err.what());
-		return d;
+		return false;
 	}
 }

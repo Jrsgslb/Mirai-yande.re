@@ -1,9 +1,8 @@
 ﻿// 注意: 本项目的所有源文件都必须是 UTF-8 编码
 #include <iostream>
-#include <string>
+#include <map>
 
 #include <rapidjson/pointer.h>
-#include <rapidjson/document.h>
 #include <future>
 
 #include <mirai.h>
@@ -12,11 +11,11 @@
 #include "../include/message.h"
 #include "../include/imgsearch.h"
 #include "../include/yande.h"
+#include "../include/Bilibili.h"
 
 int main()
 {
 	using namespace std;
-	using namespace rapidjson;
 	using namespace Cyan;
 
 	if (!StartCheck())
@@ -71,15 +70,17 @@ int main()
 	auto a = async(TimeLoop, d["更新时间"].GetInt(), proxy, proxy_http);
 	cout << "已抛出时钟线程\n";
 
+	map<int64_t, bool> search_map;
+
 	bot.On<GroupMessage>(
 		[&](GroupMessage m)
 		{
 			try
 			{
-				m.GetMiraiBot();
 				auto mc = m.MessageChain;
 				auto qms = mc.GetAll<QuoteMessage>();
 				string plain = mc.GetPlainText(), adminer = GroupPermissionStr(m.Sender.Permission);
+				vector<ImageMessage> imgs = mc.GetAll<ImageMessage>();
 				bool admin;
 				//发送者权限判断
 				if (adminer == "ADMINISTRATOR" || adminer == "OWNER" || m.Sender.QQ.ToInt64() == master)
@@ -90,11 +91,18 @@ int main()
 				{
 					admin = false;
 				}
-				//test
-				if (plain == "test")
+				//图片消息
+				if (imgs.size() != 0)
 				{
-					//cout << Http_Get("https://api.jrsgslb.cn/cos/url.php?return=json", proxy, proxy_http, "1") << endl;
-					m.QuoteReply(MessageChain().Plain("111"));
+					if (m.AtMe() || search_map[m.Sender.QQ.ToInt64()])
+					{
+						if (!snao_search(proxy, proxy_http, imgs[0].ToMiraiImage().Url, m.GetMiraiBot(), MessageType::GroupMessage, m.Sender.Group.GID.ToInt64(), m.MessageId()))
+						{
+							m.QuoteReply(MessageChain().Plain("发生错误，详见控制台"));
+							return;
+						}
+						return;
+					}
 
 					return;
 				}
@@ -107,7 +115,8 @@ int main()
 					return;
 				}
 				//更新tag
-				if (plain == "更新tag" && m.Sender.QQ.ToInt64() == master) {
+				if (plain == "更新tag" && m.Sender.QQ.ToInt64() == master)
+				{
 					string tag;
 					m.QuoteReply(MessageChain().Plain("更新中..."));
 					if (proxy)
@@ -191,6 +200,19 @@ int main()
 						}
 					}
 				}
+				//搜图
+				if (plain == d["搜图"].GetString() && !search_map[m.Sender.QQ.ToInt64()])
+				{
+					search_map[m.Sender.QQ.ToInt64()] = true;
+					m.QuoteReply(MessageChain().Plain("搜图模式开启成功,请发送图片吧\n退出搜图请发送:").Plain(d["退出搜图"].GetString()));
+					return;
+				}
+				if (plain == d["退出搜图"].GetString() && search_map[m.Sender.QQ.ToInt64()])
+				{
+					search_map[m.Sender.QQ.ToInt64()] = false;
+					m.QuoteReply(MessageChain().Plain("嗷呜~"));
+					return;
+				}
 				//引用回复消息
 				if (!qms.empty())
 				{
@@ -202,113 +224,12 @@ int main()
 						string type = Pointer("/messageChain/0/type").Get(ms)->GetString();
 						if (type == "Image")
 						{
-							Document a2d_json, snao_json;
-							snao_json = snao_search(proxy, proxy_http, Pointer("/messageChain/0/url").Get(ms)->GetString());
-							if (Pointer("/code").Get(snao_json)->GetInt() != 1)
+							if (!snao_search(proxy, proxy_http, Pointer("/messageChain/0/url").Get(ms)->GetString(), m.GetMiraiBot(), MessageType::GroupMessage, m.Sender.Group.GID.ToInt64(), id))
 							{
-								if (d["Debug"].GetBool())
-								{
-									m.Reply(MessageChain().Plain(Pointer("/info").Get(snao_json)->GetString()));
-									return;
-								}
-								else
-								{
-									m.Reply(MessageChain().Plain("saucenao搜索出错了，请稍后重试"));
-									return;
-								}
-							}
-							if (stold(Pointer("/match").Get(snao_json)->GetString()) <= 80)
-							{
-								m.QuoteReply(MessageChain().Plain("相似度过低将使用ascii2d搜索"));
-								a2d_json = a2d_search(proxy, proxy_http, Pointer("/messageChain/0/url").Get(ms)->GetString());
-								//先回复snao消息
-								string snao_res;
-								if (Pointer("/dimg").Get(snao_json)->GetInt() == 1)
-								{
-									snao_res = Pointer("/title").Get(snao_json)->GetString();
-									snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "%\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
-									GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(snao_json)->GetString());
-									m.QuoteReply(MessageChain().Image(img).Plain(snao_res));
-
-									if (!d["是否缓存图片"].GetBool())
-									{
-										_sleep(5 * 1000);
-										remove(Pointer("/name").Get(snao_json)->GetString());
-									}
-								}
-								else
-								{
-									m.QuoteReply(MessageChain().Plain("网络错误，搜索结果可能不包含图片"));
-									snao_res = Pointer("/title").Get(snao_json)->GetString();
-									snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "%\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
-									m.QuoteReply(MessageChain().Plain(snao_res));
-								}
-								//a2d
-								if (Pointer("/code").Get(a2d_json)->GetInt() != 1)
-								{
-									if (d["Debug"].GetBool())
-									{
-										m.Reply(MessageChain().Plain(Pointer("/info").Get(a2d_json)->GetString()));
-										return;
-									}
-									else
-									{
-										m.Reply(MessageChain().Plain("a2d搜索出错了，请稍后重试"));
-										return;
-									}
-								}
-								if (Pointer("/dimg").Get(a2d_json)->GetInt() == 1)
-								{
-									string repl_color, repl_bovw;
-									GroupImage img_clolr = bot.UploadGroupImage(Pointer("/color/name").Get(a2d_json)->GetString());
-									GroupImage img_bovw = bot.UploadGroupImage(Pointer("/bovw/name").Get(a2d_json)->GetString());
-									repl_color = Pointer("/color/pic/name").Get(a2d_json)->GetString();
-									repl_color = repl_color + "\n原图地址:" + Pointer("/color/pic/url").Get(a2d_json)->GetString() + "\nAuthor:" + Pointer("/color/user/url").Get(a2d_json)->GetString();
-									repl_bovw = Pointer("/bovw/pic/name").Get(a2d_json)->GetString();
-									repl_bovw = repl_bovw + "\n原图地址:" + Pointer("/bovw/pic/url").Get(a2d_json)->GetString() + "\nAuthor:" + Pointer("/bovw/user/url").Get(a2d_json)->GetString();
-									m.QuoteReply(MessageChain().Plain("色调搜索结果:").Image(img_clolr).Plain(repl_color));
-									m.QuoteReply(MessageChain().Plain("特征搜索结果:").Image(img_bovw).Plain(repl_bovw));
-
-									if (!d["是否缓存图片"].GetBool())
-									{
-										_sleep(5 * 1000);
-										remove(Pointer("/color/name").Get(a2d_json)->GetString());
-										remove(Pointer("/bovw/name").Get(a2d_json)->GetString());
-									}
-								}
-								else
-								{
-									m.QuoteReply(MessageChain().Plain("网络错误，搜索结果可能不包含图片"));
-									string repl_color, repl_bovw;
-									repl_color = Pointer("/color/pic/name").Get(a2d_json)->GetString();
-									repl_color = repl_color + "\n原图地址:" + Pointer("/color/pic/url").Get(a2d_json)->GetString() + "\nAuthor:" + Pointer("/color/user/url").Get(a2d_json)->GetString();
-									repl_bovw = Pointer("/bovw/pic/name").Get(a2d_json)->GetString();
-									repl_bovw = repl_bovw + "\n原图地址:" + Pointer("/bovw/pic/url").Get(a2d_json)->GetString() + "\nAuthor:" + Pointer("/bovw/user/url").Get(a2d_json)->GetString();
-									m.QuoteReply(MessageChain().Plain("色调搜索结果:").Plain(repl_color));
-									m.QuoteReply(MessageChain().Plain("特征搜索结果:").Plain(repl_bovw));
-								}
+								m.QuoteReply(MessageChain().Plain("发生错误，详见控制台"));
 								return;
 							}
-							else
-							{
-								string snao_res;
-								if (Pointer("/dimg").Get(snao_json)->GetInt() == 1)
-								{
-									snao_res = Pointer("/title").Get(snao_json)->GetString();
-									snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
-									GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(snao_json)->GetString());
-									m.QuoteReply(MessageChain().Image(img).Plain(snao_res));
-									return;
-								}
-								else
-								{
-									m.QuoteReply(MessageChain().Plain("网络错误，搜索结果可能不包含图片"));
-									snao_res = Pointer("/title").Get(snao_json)->GetString();
-									snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
-									m.QuoteReply(MessageChain().Plain(snao_res));
-									return;
-								}
-							}
+							return;
 						}
 					}
 				}
@@ -406,112 +327,10 @@ int main()
 				img.Parse(plain.ToString().c_str());
 				if (strstr(Pointer("/0/type").Get(img)->GetString(), "Image"))
 				{
-					Document a2d_json, snao_json;
-					snao_json = snao_search(proxy, proxy_http, Pointer("/0/url").Get(img)->GetString());
-					if (Pointer("/code").Get(snao_json)->GetInt() != 1)
+					if (!snao_search(proxy, proxy_http, Pointer("/0/url").Get(img)->GetString(), m.GetMiraiBot(), MessageType::FriendMessage, m.Sender.QQ.ToInt64(), m.MessageId()))
 					{
-						if (d["Debug"].GetBool())
-						{
-							m.Reply(MessageChain().Plain(Pointer("/info").Get(snao_json)->GetString()));
-							return;
-						}
-						else
-						{
-							m.Reply(MessageChain().Plain("saucenao搜索出错了，请稍后重试"));
-							return;
-						}
-					}
-
-					if (stold(Pointer("/match").Get(snao_json)->GetString()) <= 80)
-					{
-						m.Reply(MessageChain().Plain("相似度过低将使用ascii2d搜索"));
-						a2d_json = a2d_search(proxy, proxy_http, Pointer("/0/url").Get(img)->GetString());
-						//先回复snao消息
-						string snao_res;
-						if (Pointer("/dimg").Get(snao_json)->GetInt() == 1)
-						{
-							snao_res = Pointer("/title").Get(snao_json)->GetString();
-							snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "%\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
-							GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(snao_json)->GetString());
-							m.Reply(MessageChain().Image(img).Plain(snao_res));
-
-							if (!d["是否缓存图片"].GetBool())
-							{
-								_sleep(5 * 1000);
-								remove(Pointer("/name").Get(snao_json)->GetString());
-							}
-						}
-						else
-						{
-							m.Reply(MessageChain().Plain("网络错误，搜索结果可能不包含图片"));
-							snao_res = Pointer("/title").Get(snao_json)->GetString();
-							snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "%\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
-							m.Reply(MessageChain().Plain(snao_res));
-						}
-						//a2d结果回复
-						if (Pointer("/code").Get(a2d_json)->GetInt() != 1)
-						{
-							if (d["Debug"].GetBool())
-							{
-								m.Reply(MessageChain().Plain(Pointer("/info").Get(a2d_json)->GetString()));
-								return;
-							}
-							else
-							{
-								m.Reply(MessageChain().Plain("a2d搜索出错了，请稍后重试"));
-								return;
-							}
-						}
-						if (Pointer("/dimg").Get(a2d_json)->GetInt() == 1)
-						{
-							string repl_color, repl_bovw;
-							FriendImage img_clolr = bot.UploadFriendImage(Pointer("/color/name").Get(a2d_json)->GetString());
-							FriendImage img_bovw = bot.UploadFriendImage(Pointer("/bovw/name").Get(a2d_json)->GetString());
-							repl_color = Pointer("/color/pic/name").Get(a2d_json)->GetString();
-							repl_color = repl_color + "\n原图地址:" + Pointer("/color/pic/url").Get(a2d_json)->GetString() + "\nAuthor:" + Pointer("/color/user/url").Get(a2d_json)->GetString();
-							repl_bovw = Pointer("/bovw/pic/name").Get(a2d_json)->GetString();
-							repl_bovw = repl_bovw + "\n原图地址:" + Pointer("/bovw/pic/url").Get(a2d_json)->GetString() + "\nAuthor:" + Pointer("/bovw/user/url").Get(a2d_json)->GetString();
-							m.Reply(MessageChain().Plain("色调搜索结果:").Image(img_clolr).Plain(repl_color));
-							m.Reply(MessageChain().Plain("特征搜索结果:").Image(img_bovw).Plain(repl_bovw));
-
-							if (!d["是否缓存图片"].GetBool())
-							{
-								_sleep(5 * 1000);
-								remove(Pointer("/color/name").Get(a2d_json)->GetString());
-								remove(Pointer("/bovw/name").Get(a2d_json)->GetString());
-							}
-						}
-						else
-						{
-							m.Reply(MessageChain().Plain("网络错误，搜索结果可能不包含图片"));
-							string repl_color, repl_bovw;
-							repl_color = Pointer("/color/pic/name").Get(a2d_json)->GetString();
-							repl_color = repl_color + "\n原图地址:" + Pointer("/color/pic/url").Get(a2d_json)->GetString() + "\nAuthor:" + Pointer("/color/user/url").Get(a2d_json)->GetString();
-							repl_bovw = Pointer("/bovw/pic/name").Get(a2d_json)->GetString();
-							repl_bovw = repl_bovw + "\n原图地址:" + Pointer("/bovw/pic/url").Get(a2d_json)->GetString() + "\nAuthor:" + Pointer("/bovw/user/url").Get(a2d_json)->GetString();
-							m.Reply(MessageChain().Plain("色调搜索结果:").Plain(repl_color));
-							m.Reply(MessageChain().Plain("特征搜索结果:").Plain(repl_bovw));
-						}
-					}
-					else
-					{
-						string snao_res;
-						if (Pointer("/dimg").Get(snao_json)->GetInt() == 1)
-						{
-							snao_res = Pointer("/title").Get(snao_json)->GetString();
-							snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
-							GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(snao_json)->GetString());
-							m.Reply(MessageChain().Image(img).Plain(snao_res));
-							return;
-						}
-						else
-						{
-							m.Reply(MessageChain().Plain("网络错误，搜索结果可能不包含图片"));
-							snao_res = Pointer("/title").Get(snao_json)->GetString();
-							snao_res = snao_res + "\n相似度：" + Pointer("/match").Get(snao_json)->GetString() + "\n图片地址：" + Pointer("/id").Get(snao_json)->GetString() + "\n画师：" + Pointer("/member").Get(snao_json)->GetString();
-							m.Reply(MessageChain().Plain(snao_res));
-							return;
-						}
+						m.QuoteReply(MessageChain().Plain("发生错误，详见控制台"));
+						return;
 					}
 					return;
 				}

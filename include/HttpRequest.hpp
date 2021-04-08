@@ -16,7 +16,7 @@ public:
 	static std::string https;
 	static std::string body;
 	static std::string file;
-	//GetÇëÇó
+	//Getè¯·æ±‚
 	std::string Http_Get(std::string url, bool proxy, std::string https)
 	{
 		Response r;
@@ -41,7 +41,7 @@ public:
 			std::cout << err.what() << std::endl << r.error.message << std::endl;
 		}
 	};
-	//PostÇëÇó
+	//Postè¯·æ±‚
 	std::string Http_Post(std::string url, bool proxy, std::string https, std::string body)
 	{
 		Response r;
@@ -66,10 +66,10 @@ public:
 			std::cout << err.what() << std::endl << r.error.message << std::endl;
 		}
 	};
-	//ÏÂÔØÍ¼Æ¬µ½±¾µØ
+	//ä¸‹è½½å›¾ç‰‡åˆ°æœ¬åœ°
 	bool DownloadImg(std::string url, std::string file, bool proxy, std::string https)
 	{
-		//´úÀíÉèÖÃ
+		//ä»£ç†è®¾ç½®
 		if (proxy)
 		{
 			std::string http;
