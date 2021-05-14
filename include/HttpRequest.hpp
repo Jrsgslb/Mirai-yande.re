@@ -7,7 +7,7 @@
 #pragma comment(lib,"urlmon.lib")
 
 using namespace cpr;
-
+//网络请求
 class HttpRequest
 {
 public:
@@ -24,15 +24,69 @@ public:
 		{
 			if (proxy)
 			{
-				r = Get(Url{ url }, Proxies{ {"https", https} }, Timeout{ 10000 });
+				r = Get(Url{ url }, Proxies{ {"https", https} }, Timeout{ 10000 }, Header{ {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.56"} });
 			}
 			else
 			{
-				r = Get(Url{ url }, Timeout{ 10000 });
+				r = Get(Url{ url }, Timeout{ 10000 }, Header{ {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.56"} });
 			}
 			if (r.status_code != 200)
 			{
 				std::cout << r.error.message << std::endl;
+				return "";
+			}
+			return r.text;
+		}
+		catch (const std::exception& err)
+		{
+			std::cout << err.what() << std::endl << r.error.message << std::endl;
+		}
+	};
+	//Get请求（Bilibili）
+	std::string Http_Get_Bili(std::string url, bool proxy, std::string https)
+	{
+		Response r;
+		try
+		{
+			if (proxy)
+			{
+				r = Get(Url{ url }, Proxies{ {"https", https} }, Timeout{ 10000 }, Cookies{ {"uid", "123"} }, Header{ {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.56"} });
+			}
+			else
+			{
+				r = Get(Url{ url }, Timeout{ 10000 }, Cookies{ {"uid", "123"} }, Header{ {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.56"} });
+			}
+			
+			if (r.status_code != 200)
+			{
+				std::cout << r.error.message << std::endl;
+				return "";
+			}
+			return r.text;
+		}
+		catch (const std::exception& err)
+		{
+			std::cout << err.what() << std::endl << r.error.message << std::endl;
+		}
+	};
+	//Get-pixiv砖用
+	std::string Http_Get_Pixiv(std::string url, bool proxy, std::string https)
+	{
+		Response r;
+		try
+		{
+			if (proxy)
+			{
+				r = Get(Url{ url }, Proxies{ {"https", https} }, Timeout{ 10000 }, Header{ {"Referer", "https://www.pixiv.net/"}, {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.56"} });
+			}
+			else
+			{
+				r = Get(Url{ url }, Timeout{ 10000 }, Header{ {"Referer", "https://www.pixiv.net/"}, { "user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.56" } });
+			}
+			if (r.status_code != 200)
+			{
+				std::cout << r.error.message << std::endl;
+				return "";
 			}
 			return r.text;
 		}
@@ -49,15 +103,16 @@ public:
 		{
 			if (proxy)
 			{
-				r = Post(Url{ url }, Body{ body }, Proxies{ {"https", https} }, Timeout{ 10000 });
+				r = Post(Url{ url }, Body{ body }, Proxies{ {"https", https} }, Timeout{ 10000 }, Header{ {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.56"} });
 			}
 			else
 			{
-				r = Post(Url{ url }, Body{ body }, Timeout{ 10000 });
+				r = Post(Url{ url }, Body{ body }, Timeout{ 10000 }, Header{ {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.56"} });
 			}
 			if (r.status_code != 200)
 			{
 				std::cout << r.error.message << std::endl;
+				return "";
 			}
 			return r.text;
 		}

@@ -162,7 +162,7 @@ bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTyp
 	}
 }
 
-bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageType type, int64_t id, int msid)
+bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageType type, int64_t id, int msid, int min_match)
 {
 	Document d;
 	string txt, snao_res, rurl;
@@ -242,7 +242,7 @@ bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTy
 				GID_t gid = GID_t(id);
 				GroupImage img = bot.UploadGroupImage(name);
 				bot.SendMessage(gid, MessageChain().Image(img).Plain(snao_res), msid);
-				if (stod(match_res.str(1)) < 80)
+				if (stod(match_res.str(1)) < min_match)
 				{
 					bot.SendMessage(gid, MessageChain().Plain("相似度过低，将使用ascii2d搜索"), msid);
 					a2d_search(proxy, https, url, bot, type, id, msid);
@@ -253,10 +253,13 @@ bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTy
 				QQ_t gid = QQ_t(id);
 				FriendImage img = bot.UploadFriendImage(name);
 				bot.SendMessage(gid, MessageChain().Image(img).Plain(snao_res));
-				if (stod(match_res.str(1)) < 80)
+				if (stod(match_res.str(1)) < min_match)
 				{
 					bot.SendMessage(gid, MessageChain().Plain("相似度过低，将使用ascii2d搜索"));
-					a2d_search(proxy, https, url, bot, type, id, msid);
+					if (!a2d_search(proxy, https, url, bot, type, id, msid))
+					{
+						return false;
+					}
 				}
 			}			
 		}
@@ -268,7 +271,7 @@ bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTy
 				GroupImage img = bot.UploadGroupImage(name);
 				bot.SendMessage(gid, MessageChain().Plain("网络错误，结果不包含图片"), msid);
 				bot.SendMessage(gid, MessageChain().Plain(snao_res), msid);
-				if (stod(match_res.str(1)) < 80)
+				if (stod(match_res.str(1)) < min_match)
 				{
 					bot.SendMessage(gid, MessageChain().Plain("相似度过低，将使用ascii2d搜索"), msid);
 					a2d_search(proxy, https, url, bot, type, id, msid);
@@ -280,7 +283,7 @@ bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTy
 				FriendImage img = bot.UploadFriendImage(name);
 				bot.SendMessage(gid, MessageChain().Plain("网络错误，结果不包含图片"));
 				bot.SendMessage(gid, MessageChain().Plain(snao_res));
-				if (stod(match_res.str(1)) < 80)
+				if (stod(match_res.str(1)) < min_match)
 				{
 					bot.SendMessage(gid, MessageChain().Plain("相似度过低，将使用ascii2d搜索"));
 					a2d_search(proxy, https, url, bot, type, id, msid);

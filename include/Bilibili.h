@@ -1,9 +1,11 @@
 #pragma once
 #include "mirai/mirai.h"
-#include <rapidjson/document.h>
 
-using namespace rapidjson;
 using namespace Cyan;
 
-Document Bilibili_live(MiraiBot bot);
-Document Bilibili_cos();
+//刷新直播订阅uid
+bool Reload_live_uid();
+//直播订阅
+void Bilibili_live(MiraiBot& bot);
+//热门cos
+bool Bilibili_cos(MiraiBot& bot, GID_t gid);

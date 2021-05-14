@@ -9,18 +9,22 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp> 
 
-#include <rapidjson/pointer.h>
 #include <rapidjson/filereadstream.h>
+#include <rapidjson\filewritestream.h>
+#include <rapidjson\writer.h>
 
 using namespace boost::property_tree;
 
+vector<string> command;
+
 bool StartCheck()
 {
-	//¼ì²â²¢´´½¨ÎÄ¼ş¼Ğ
+	//æ£€æµ‹å¹¶åˆ›å»ºæ–‡ä»¶å¤¹
 	if (_access("./temp", 0) == -1)_mkdir("./temp");
 	if (_access("./config", 0) == -1)_mkdir("./config");
+	if (_access("./config/bili", 0) == -1)_mkdir("./config/bili");
 	if (_access("./config/data", 0) == -1)_mkdir("./config/data");
-	//¼ì²édll
+	//æ£€æŸ¥dll
 	if (access("./libcurl.dll", 0) == -1)
 	{
 		if (system("curl http://101.37.245.179:8000/down/k3b5es2COdMe --output libcurl.dll")!=0)
@@ -35,11 +39,14 @@ bool StartCheck()
 			return false;
 		}
 	}
-	//ÎÄ¼ş²»´æÔÚ×Ô¶¯´´½¨
-	fstream fs1, fs2, fs3;
+	//æ–‡ä»¶ä¸å­˜åœ¨è‡ªåŠ¨åˆ›å»º
+	fstream fs1, fs2, fs3,fs4,fs5,fs6;
 	fs1.open("./config/data/member.ini", ios::in);
 	fs2.open("./config/data/group.ini", ios::in);
 	fs3.open("./temp/num.ini", ios::in);
+	fs4.open("./config/Group_whitelist.txt", ios::in);
+	fs5.open("./config/whitelist.txt", ios::in);
+	fs6.open("./config/bili/live.json", ios::in);
 	if (!fs1)
 	{
 		ofstream fout("./config/data/member.ini");
@@ -61,45 +68,117 @@ bool StartCheck()
 	}
 	else
 		fs3.close();
+	if (!fs4)
+	{
+		ofstream fout("./config/Group_whitelist.txt");
+		if (fout) fout.close();
+	}
+	else
+		fs4.close();
+	if (!fs5)
+	{
+		ofstream fout("./config/whitelist.txt");
+		if (fout) fout.close();
+	}
+	else
+		fs5.close();
+	if (!fs6)
+	{
+		ofstream fout("./config/bili/live.json");
+		if (fout) fout.close();
+	}
+	else
+		fs6.close();
+	//æ£€æŸ¥æŒ‡ä»¤æ–‡ä»¶æœ‰æ— ç©ºè¡Œ
+	ifstream in("./config/command.txt");
+	string line, str;
+	bool first = true;
+	while (getline(in, line))
+	{
+		if (line == "")
+		{
+			continue;
+		}
+		if (first)
+		{
+			first = false;
+			str = str + line;
+			continue;
+		}
+		str = str + "\n" + line;
+	}
+
+	FILE* tem = fopen("./config/command.txt", "w");
+	fprintf(tem, "%s", str.c_str());
+	fclose(tem);
+	in.close();
+
 	return true;
+}
+
+void CommandReload()
+{
+	ifstream in("./config/command.txt");
+	string line;
+	while (getline(in, line))
+	{
+		command.push_back(line);
+	}
+	in.close();
+	return;
 }
 
 bool MessageCheck(string plain)
 {
-    ifstream in("./config/command.txt");
-    string line;
-	while (getline(in, line))
+	for (int i = 0; i < command.size(); i++)
 	{
-		if (line == plain)
+		if (plain == command[i])
 		{
-			return 1;
+			return true;
 		}
 	}
-	return 0;
+	return false;
 }
 
 bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 {
-	ifstream in1("./config/Èº°×Ãûµ¥.txt"), in2("./config/°×Ãûµ¥.txt");
+	ifstream in1("./config/Group_whitelist.txt"), in2("./config/whitelist.txt");
 	string line1, line2;
-	//Èº°×Ãûµ¥ÑéÖ¤
+	//ç¾¤ç™½åå•éªŒè¯
 	if (in1) while (getline(in1, line1)) if (!line1.empty() && stoi(line1) == group_num) return true;
-	//¸öÈË°×Ãûµ¥ÑéÖ¤
+	//ä¸ªäººç™½åå•éªŒè¯
 	if (in2) while (getline(in2, line2))if (!line2.empty() && stoi(line2) == qq_num) return true;
 
 	ptree p, ini;
+	bool on = false;
 	ini_parser::read_ini("./config/rule.ini", p);
+	basic_ptree<string, string> tag = p.get_child("");
+	//æ²¡å†™å…¥æ–‡ä»¶çš„é¢‘ç‡é™åˆ¶è°ƒç”¨æ£€æŸ¥
+	for (auto i = tag.begin(); i != tag.end(); i++)
+	{
+		if ((*i).first.data() == plain)
+		{
+			on = true;
+			break;
+		}
+	}
+	if (!on)
+	{
+		return true;
+	}
+
 	ini = p.get_child(plain);
+
 	int mod1, mod2, time_set;
 	mod1 = ini.get<int>("mode1", 10);
 	mod2 = ini.get<int>("mode2", 10);
 	time_set = ini.get<int>("time", 10);
 	string str = ini.get<string>("member", "0"), temp;
 
-	//ÕıÔò·Ö¸îmember
+	//æ­£åˆ™åˆ†å‰²member
 	regex reg("[1-9][0-9]{4,14}");
 	smatch res;
-	//µü´úÆ÷ÉùÃ÷
+	//è¿­ä»£å™¨å£°æ˜
 	string::const_iterator ben = str.begin(); 
 	string::const_iterator end = str.end();
 	bool member_ini = false;
@@ -116,15 +195,15 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 	}
 
 	/*
-	²ĞÁôÎÊÌâ£º
+	æ®‹ç•™é—®é¢˜ï¼š
 
-	£¿£¿£¿
-	ÈÈÃÅÍ¼Æ¬Ö¸ÁîµÄÆµÂÊÏŞÖÆÊµÏÖ
-	£¿£¿£¿
+	ï¼Ÿï¼Ÿï¼Ÿ
+	çƒ­é—¨å›¾ç‰‡æŒ‡ä»¤çš„é¢‘ç‡é™åˆ¶å®ç°
+	ï¼Ÿï¼Ÿï¼Ÿ
 
 	*/
 
-	//ÆµÂÊÏŞÖÆ¿ªÊ¼
+	//é¢‘ç‡é™åˆ¶å¼€å§‹
 	switch (mod1)
 	{
 		default: return true;
@@ -133,7 +212,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			ptree group_pt, group_time;
 			string test = to_string(group_num) + ".time";
 			ini_parser::read_ini("./config/data/group.ini", group_pt);
-			//¿Õ¼üÃû´¦Àí
+			//ç©ºé”®åå¤„ç†
 			try
 			{
 				group_time = group_pt.get_child(to_string(group_num));
@@ -149,7 +228,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			switch (mod2)
 			{
 			default: return true;
-				//ÒÔÈºÎªµ¥Î»£¬È«²¿ÈºÉúĞ§
+				//ä»¥ç¾¤ä¸ºå•ä½ï¼Œå…¨éƒ¨ç¾¤ç”Ÿæ•ˆ
 			case(0):
 				if (time_new - time_old > time_set)
 				{
@@ -159,7 +238,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔÈºÎªµ¥Î»£¬Ö¸¶¨ÈºÉúĞ§£¬ÆäÓàÈº²»ÉúĞ§
+				//ä»¥ç¾¤ä¸ºå•ä½ï¼ŒæŒ‡å®šç¾¤ç”Ÿæ•ˆï¼Œå…¶ä½™ç¾¤ä¸ç”Ÿæ•ˆ
 			case(1):
 				if (member_ini)
 				{
@@ -174,7 +253,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return true;
-				//ÒÔÈºÎªµ¥Î»£¬Ö¸¶¨ÈºÉúĞ§£¬ÆäÓàÈºÆÁ±Î
+				//ä»¥ç¾¤ä¸ºå•ä½ï¼ŒæŒ‡å®šç¾¤ç”Ÿæ•ˆï¼Œå…¶ä½™ç¾¤å±è”½
 			case(2):
 				if (member_ini)
 				{
@@ -189,7 +268,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔÈºÎªµ¥Î»£¬Ö¸¶¨Èº²»ÉúĞ§£¬ÆäÓàÈºÉúĞ§
+				//ä»¥ç¾¤ä¸ºå•ä½ï¼ŒæŒ‡å®šç¾¤ä¸ç”Ÿæ•ˆï¼Œå…¶ä½™ç¾¤ç”Ÿæ•ˆ
 			case(3):
 				if (member_ini) return true;
 				if (time_new - time_old > time_set)
@@ -200,7 +279,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔÈºÎªµ¥Î»£¬Ö¸¶¨ÈºÆÁ±Î£¬ÆäÓàÈºÉúĞ§
+				//ä»¥ç¾¤ä¸ºå•ä½ï¼ŒæŒ‡å®šç¾¤å±è”½ï¼Œå…¶ä½™ç¾¤ç”Ÿæ•ˆ
 			case(4):
 				if (member_ini) return false;
 				if (time_new - time_old > time_set)
@@ -211,7 +290,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔÈºÎªµ¥Î»£¬¹ÜÀí·ÅĞĞ£¬Ö¸¶¨ÈºÆÁ±Î
+				//ä»¥ç¾¤ä¸ºå•ä½ï¼Œç®¡ç†æ”¾è¡Œï¼ŒæŒ‡å®šç¾¤å±è”½
 			case(5):
 				if (member_ini) return false;
 				if (admin) return true;
@@ -223,7 +302,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔÈºÎªµ¥Î»£¬¹ÜÀíÉúĞ§£¬Ö¸¶¨ÈººÍÈºÔ±ÆÁ±Î
+				//ä»¥ç¾¤ä¸ºå•ä½ï¼Œç®¡ç†ç”Ÿæ•ˆï¼ŒæŒ‡å®šç¾¤å’Œç¾¤å‘˜å±è”½
 			case(6):
 				if (member_ini || !admin) return false;
 				if (time_new - time_old > time_set)
@@ -241,7 +320,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			ptree member, n_time;
 			string test = to_string(qq_num) + ".time";
 			ini_parser::read_ini("./config/data/member.ini", member);
-			//¿Õ¼üÃû´¦Àí
+			//ç©ºé”®åå¤„ç†
 			try
 			{
 				n_time = member.get_child(to_string(qq_num));
@@ -257,7 +336,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			switch (mod2)
 			{
 			default: return true;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬È«²¿ÈËÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œå…¨éƒ¨äººç”Ÿæ•ˆ
 			case(0):
 				if (time_new - time_old > time_set)
 				{
@@ -267,7 +346,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈËÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„äººç”Ÿæ•ˆ
 			case(1):
 				if (member_ini)
 				{
@@ -282,7 +361,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return true;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈËÉúĞ§£¬ÆäÓàÈËÆÁ±Î
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„äººç”Ÿæ•ˆï¼Œå…¶ä½™äººå±è”½
 			case(2):
 				if (member_ini)
 				{
@@ -297,7 +376,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈË·ÅĞĞ£¬ÆäÓàµÄÈËÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„äººæ”¾è¡Œï¼Œå…¶ä½™çš„äººç”Ÿæ•ˆ
 			case(3):
 				if (member_ini) return true;
 				if (time_new - time_old > time_set)
@@ -308,7 +387,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈËÆÁ±Î£¬ÆäÓàµÄÈËÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„äººå±è”½ï¼Œå…¶ä½™çš„äººç”Ÿæ•ˆ
 			case(4):
 				if (member_ini) return false;
 				if (time_new - time_old > time_set)
@@ -319,7 +398,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Èº¹ÜÀíÔ±·ÅĞĞ£¬Ö¸¶¨µÄÈËÆÁ±Î£¬ÆäÓàÈËÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œç¾¤ç®¡ç†å‘˜æ”¾è¡Œï¼ŒæŒ‡å®šçš„äººå±è”½ï¼Œå…¶ä½™äººç”Ÿæ•ˆ
 			case(5):
 				if (member_ini) return false;
 				if (admin) return true;
@@ -331,7 +410,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Èº¹ÜÀíÔ±ÉúĞ§£¬Ö¸¶¨µÄÈËºÍÆäÓàµÄÈËÆÁ±Î
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œç¾¤ç®¡ç†å‘˜ç”Ÿæ•ˆï¼ŒæŒ‡å®šçš„äººå’Œå…¶ä½™çš„äººå±è”½
 			case(6):
 				if (member_ini || !admin) return false;
 				if (time_new - time_old > time_set)
@@ -349,7 +428,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			ptree member, n_time;
 			string test = to_string(qq_num) + ".time";
 			ini_parser::read_ini("./config/data/member.ini", member);
-			//¿Õ¼üÃû´¦Àí
+			//ç©ºé”®åå¤„ç†
 			try
 			{
 				n_time = member.get_child(to_string(qq_num));
@@ -365,7 +444,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			switch (mod2)
 			{
 			default: return true;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬È«²¿ÈËÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œå…¨éƒ¨äººç”Ÿæ•ˆ
 			case(0):
 				if (time_new - time_old > time_set)
 				{
@@ -375,7 +454,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈºÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„ç¾¤ç”Ÿæ•ˆ
 			case(1):
 				if (member_ini)
 				{
@@ -390,7 +469,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return true;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈºÉúĞ§£¬ÆäÓàÈËÆÁ±Î
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„ç¾¤ç”Ÿæ•ˆï¼Œå…¶ä½™äººå±è”½
 			case(2):
 				if (member_ini)
 				{
@@ -405,7 +484,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈº·ÅĞĞ£¬ÆäÓàµÄÈËÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„ç¾¤æ”¾è¡Œï¼Œå…¶ä½™çš„äººç”Ÿæ•ˆ
 			case(3):
 				if (member_ini) return true;
 				if (time_new - time_old > time_set)
@@ -416,7 +495,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Ö¸¶¨µÄÈºÆÁ±Î£¬ÆäÓàµÄÈËÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼ŒæŒ‡å®šçš„ç¾¤å±è”½ï¼Œå…¶ä½™çš„äººç”Ÿæ•ˆ
 			case(4):
 				if (member_ini) return false;
 				if (time_new - time_old > time_set)
@@ -427,7 +506,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Èº¹ÜÀíÔ±·ÅĞĞ£¬Ö¸¶¨µÄÈºÆÁ±Î£¬ÆäÓàÈËÉúĞ§
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œç¾¤ç®¡ç†å‘˜æ”¾è¡Œï¼ŒæŒ‡å®šçš„ç¾¤å±è”½ï¼Œå…¶ä½™äººç”Ÿæ•ˆ
 			case(5):
 				if (member_ini) return false;
 				if (admin) return true;
@@ -439,7 +518,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				}
 				else
 					return false;
-				//ÒÔ¸öÈËÎªµ¥Î»£¬Èº¹ÜÀíÔ±ÉúĞ§£¬Ö¸¶¨µÄÈººÍÆäÓàµÄÈËÆÁ±Î
+				//ä»¥ä¸ªäººä¸ºå•ä½ï¼Œç¾¤ç®¡ç†å‘˜ç”Ÿæ•ˆï¼ŒæŒ‡å®šçš„ç¾¤å’Œå…¶ä½™çš„äººå±è”½
 			case(6):
 				if (member_ini || !admin) return false;
 				if (time_new - time_old > time_set)
@@ -453,7 +532,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			}
 		}
 	}
-	//ÆµÂÊÏŞÖÆ½áÊø
+	//é¢‘ç‡é™åˆ¶ç»“æŸ
 }
 
 bool MessageR18(int64_t qq_num, int64_t group_num, bool R18)
@@ -487,22 +566,34 @@ bool MessageR18(int64_t qq_num, int64_t group_num, bool R18)
 	}
 }
 
-Document ReloadConfig()
+string ReloadFile(const char* file)
 {
-	FILE* fp = fopen("./config.json", "rb");
-
-	if (fp == NULL)
+	ifstream in(file);
+	string line, res;
+	if (!in)
 	{
-		cout << "Error reading configuration file, please check whether the configuration file exists.\n";
-		system("pause");
-		return 0;
+		cout << "Failed to open the file, please check if the file exists\n";
+		return "";
 	}
+	while (getline(in, line))
+	{
+		res = res + line;
+	}
+	in.close();
+	return res;
+}
 
-	char readBuffer[10000];
-	FileReadStream is(fp, readBuffer, sizeof(readBuffer));
-	Document d;
-	d.ParseStream(is);
-
-	fclose(fp);
-	return d;
+bool WriteFile(const char* file, string txt)
+{
+	ofstream out(file);
+	if (out.is_open())
+	{
+		out << txt;
+		out.close();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }

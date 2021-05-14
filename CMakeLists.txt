@@ -25,7 +25,7 @@ endif(MSVC)
 
 list(APPEND SOURCES src/logo.rc)
 
-add_executable(${PROJECT_NAME} src/main.cpp   "include/yande.h" "include/message.h"  "src/yande.cpp" "src/message.cpp"   "include/imgsearch.h" "src/imgsearch.cpp"    "include/Timing.h" "src/Timing.cpp" "src/bilibili.cpp" "include/HttpRequest.hpp"  "include/Bilibili.h")
+add_executable(${PROJECT_NAME} src/main.cpp   "include/yande.h" "include/message.h"  "src/yande.cpp" "src/message.cpp"   "include/imgsearch.h" "src/imgsearch.cpp"    "include/Timing.h" "src/Timing.cpp" "src/bilibili.cpp" "include/HttpRequest.hpp"  "include/Bilibili.h" "include/Pixiv.h" "src/Pixiv.cpp")
 # 设置头文件目录
 include_directories(include)
 # 链接 mirai-cpp

@@ -227,7 +227,6 @@ Document yid(string id, bool proxy, string https, int64_t group_num)
 		return info;
 	}
 }
-
 //获取13位时间戳
 static __int64 GetUnixTime()
 {
@@ -272,7 +271,7 @@ bool ClearTemp()
 //更新tag
 string MessageReload(bool proxy, string https)
 {
-	ptree pt;
+	ptree pt, limit;
 	ini_parser::read_ini("./config/rule.ini", pt);
 
 	basic_ptree<string, string> tag = pt.get_child("");
@@ -284,13 +283,20 @@ string MessageReload(bool proxy, string https)
 		smatch res;
 		regex reg("<posts count=\"([0-9]*)\" offset=\"([0-9]*)\"");
 		basic_ptree<string, string> temp = pt.get_child((*i).first.data());
-		string tags = temp.get<string>("tag"), txt, num, url, text;
+		string tags, txt, num, url, text;
+
+		tags = temp.get<string>("tag", "");
+		if (tags.empty())
+		{
+			continue;
+		}
+
 		num = (*i).first.data();
 
 		if (i == tag.begin()) comm = (*i).first.data();
 		else
 			comm = comm + "\n" + (*i).first.data();
-
+		
 		//获取网页并检验状态
 		HttpRequest r;
 		url = "https://yande.re/post.xml?tags=" + tags;
@@ -308,11 +314,36 @@ string MessageReload(bool proxy, string https)
 			pt.put<string>(num.c_str(), txt.c_str());
 			ini_parser::write_ini("./config/rule.ini", pt);
 		}
+		
 	}
 
 	FILE* tem = fopen("./config/command.txt", "w");
 	fprintf(tem, "%s", comm.c_str());
 	fclose(tem);
+
+	//检查指令文件有无空行
+	ifstream in("./config/command.txt");
+	string line, str;
+	bool first = true;
+	while (getline(in, line))
+	{
+		if (line == "")
+		{
+			continue;
+		}
+		if (first)
+		{
+			first = false;
+			str = str + line;
+			continue;
+		}
+		str = str + "\n" + line;
+	}
+
+	tem = fopen("./config/command.txt", "w");
+	fprintf(tem, "%s", str.c_str());
+	fclose(tem);
+	in.close();
 
 	if (!err.empty())return err;
 	else return "ok";
