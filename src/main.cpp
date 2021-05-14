@@ -270,26 +270,34 @@ int main()
 					Document bili_live_json;
 					if (bili_live_json_txt.empty())
 					{
-						Pointer("/0/uid").Set(bili_live_json, bili_live_res.str(2).c_str());
-						temp = "/0/send/0/id";
-						Pointer(temp.c_str()).Set(bili_live_json, gid_64);
-						temp = "/0/send/0/type";
-						Pointer(temp.c_str()).Set(bili_live_json, 0);
-						temp = "/0/send/0/status";
-						Pointer(temp.c_str()).Set(bili_live_json, 1);
+						if (bili_live_res.str(1) == "增加")
+						{
+							Pointer("/0/uid").Set(bili_live_json, bili_live_res.str(2).c_str());
+							temp = "/0/send/0/id";
+							Pointer(temp.c_str()).Set(bili_live_json, gid_64);
+							temp = "/0/send/0/type";
+							Pointer(temp.c_str()).Set(bili_live_json, 0);
+							temp = "/0/send/0/status";
+							Pointer(temp.c_str()).Set(bili_live_json, 1);
 
-						//写入json文件
-						StringBuffer buffer;
-						Writer<StringBuffer> writer(buffer);
-						bili_live_json.Accept(writer);
+							//写入json文件
+							StringBuffer buffer;
+							Writer<StringBuffer> writer(buffer);
+							bili_live_json.Accept(writer);
 
-						const char* output = buffer.GetString();
-						WriteFile("./config/bili/live.json", output);
-						//刷新uid
-						Reload_live_uid();
-						//消息回复
-						m.QuoteReply(MessageChain().Plain(bili_live_res.str(1)).Plain("成功"));
-						return;
+							const char* output = buffer.GetString();
+							WriteFile("./config/bili/live.json", output);
+							//刷新uid
+							Reload_live_uid();
+							//消息回复
+							m.QuoteReply(MessageChain().Plain(bili_live_res.str(1)).Plain("成功"));
+							return;
+						}
+						else
+						{
+							m.QuoteReply(MessageChain().Plain("请先增加哦！"));
+							return;
+						}
 					}
 					//备份json文件
 					WriteFile("./config/bili/live.backup", bili_live_json_txt);
