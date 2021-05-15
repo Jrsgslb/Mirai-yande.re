@@ -79,7 +79,7 @@ void Bilibili_live(MiraiBot& bot)
 		if (status == 0 && live_status[uid])
 		{
 			Document uid_group, uid_info;
-			url = "http://api.live.bilibili.com/live_user/v1/Master/info?uid=" + uid;
+			url = "https://api.live.bilibili.com/live_user/v1/Master/info?uid=" + uid;
 			txt = r.Http_Get_Bili(url, false, "1");
 			uid_info.Parse(txt.c_str());
 			txt = ReloadFile("./config/bili/live.json");

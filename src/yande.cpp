@@ -348,3 +348,69 @@ string MessageReload(bool proxy, string https)
 	if (!err.empty())return err;
 	else return "ok";
 }
+//热门排行榜图片
+Document Hot_Img(bool proxy, string https, int64_t group, bool orginal)
+{
+	HttpRequest r;
+	//取随机数
+	default_random_engine e;
+	uniform_int_distribution<unsigned> u(0, 39);
+	e.seed(GetUnixTime());
+	string page = to_string(u(e)), txt, temp, url, rating, file, id;
+	//解析json
+	Document Hot_img_json, res;
+	txt = r.Http_Get("https://yande.re/post/popular_recent.json", proxy, https);
+	if (txt.size() < 100)
+	{
+		Pointer("/code").Set(res, 0);
+		Pointer("/info").Set(res, "发送错误，详见控制台");
+		return res;
+	}
+	Hot_img_json.Parse(txt.c_str());
+	//R18
+	ptree r18;
+	temp = "/" + page + "/rating";
+	rating = Pointer(temp.c_str()).Get(Hot_img_json)->GetString();
+	ini_parser::read_ini("./config/data/group.ini", r18);
+	temp = to_string(group) + ".R18";
+	if (rating == "e" && !r18.get<bool>(temp.c_str(), false))
+	{
+		Pointer("/code").Set(res, 0);
+		Pointer("/info").Set(res, "这张图片为限制图片，不能看哦~");
+		return res;
+	}
+	//图片信息处理
+	temp = "/" + page + "/id";
+	id = to_string(Pointer(temp.c_str()).Get(Hot_img_json)->GetInt());
+	Pointer("/id").Set(res, id.c_str());
+	if (orginal)
+	{
+		temp = "/" + page + "/file_url";
+		url = Pointer(temp.c_str()).Get(Hot_img_json)->GetString();
+		temp = "/" + page + "/file_ext";
+		file = "./temp/" + id + "." + Pointer(temp.c_str()).Get(Hot_img_json)->GetString();
+		if (!r.DownloadImg(url, file, proxy, https))
+		{
+			Pointer("/code").Set(res, 0);
+			Pointer("/info").Set(res, "发送错误，详见控制台");
+			return res;
+		}
+		Pointer("/code").Set(res, 1);
+		Pointer("/name").Set(res, file.c_str());
+	}
+	else
+	{
+		temp = "/" + page + "/sample_url";
+		url = Pointer(temp.c_str()).Get(Hot_img_json)->GetString();
+		file = "./temp/" + id + ".jpg";
+		if (!r.DownloadImg(url, file, proxy, https))
+		{
+			Pointer("/code").Set(res, 0);
+			Pointer("/info").Set(res, "发送错误，详见控制台");
+			return res;
+		}
+		Pointer("/code").Set(res, 1);
+		Pointer("/name").Set(res, file.c_str());
+	}
+	return res;
+}

@@ -14,3 +14,5 @@ static __int64 GetUnixTime();
 bool ClearTemp();
 //更新y站tag
 string MessageReload(bool proxy, string https);
+//热门排行榜图片
+Document Hot_Img(bool proxy, string https, int64_t group, bool orginal);

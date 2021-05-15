@@ -510,6 +510,36 @@ int main()
 					m.QuoteReply(MessageChain().Plain("嗷呜~"));
 					return;
 				}
+				//y站热门榜
+				if (plain == d["y站热榜"].GetString() && MessageLimit(d["y站热榜"].GetString(), qq_64, gid_64, admin))
+				{
+					m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+					Document Hot_img_json;
+					Hot_img_json = Hot_Img(proxy, proxy_http, gid_64, d["发送原图"].GetBool());
+					if (Pointer("/code").Get(Hot_img_json)->GetInt() == 0)
+					{
+						m.Reply(MessageChain().Plain(Pointer("/info").Get(Hot_img_json)->GetString()));
+						return;
+					}
+					int msid;
+					GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(Hot_img_json)->GetString());
+					msid = m.Reply(MessageChain().Image(img));
+					if (d["发送图片ID"].GetBool())
+					{
+						bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain("Y站图片ID：").Plain(Pointer("/id").Get(Hot_img_json)->GetString()), msid);
+					}
+					if (!d["是否缓存图片"].GetBool())
+					{
+						_sleep(1 * 1000);
+						remove(Pointer("/name").Get(Hot_img_json)->GetString());
+					}
+					if (d["是否撤回"].GetBool())
+					{
+						_sleep(d["撤回延时"].GetInt() * 1000);
+						bot.Recall(msid);
+					}
+					return;
+				}
 				//自定义发图
 				if (MessageCheck(plain))
 				{
@@ -564,7 +594,7 @@ int main()
 					}
 					else
 					{
-						m.QuoteReply(MessageChain().Plain("要懂得节制哦 QAQ"));
+						m.QuoteReply(MessageChain().Plain(d["频率限制回复语"].GetString()));
 					}
 					return;
 				}
