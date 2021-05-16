@@ -69,7 +69,7 @@ bool Pixiv_id(bool proxy, string& https, string pid, MiraiBot& bot, int64_t grou
 	}
 	catch (const std::exception& err)
 	{
-		cout << err.what() << endl;
+		printf("%s \n", err.what());
 		return false;
 	}
 }
@@ -90,7 +90,7 @@ bool Pixiv_rank(bool proxy, string& https, int count, MiraiBot& bot, int64_t gro
 	}
 	catch (const std::exception& err)
 	{
-		cout << err.what() << endl;
+		printf("%s \n", err.what());
 		return false;
 	}
 }

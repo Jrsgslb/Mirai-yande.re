@@ -572,7 +572,7 @@ string ReloadFile(const char* file)
 	string line, res;
 	if (!in)
 	{
-		cout << "Failed to open the file, please check if the file exists\n";
+		printf("打开文件失败，请检查文件是否存在\n");
 		return "";
 	}
 	while (getline(in, line))

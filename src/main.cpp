@@ -23,7 +23,7 @@ int main()
 
 	if (!StartCheck())
 	{
-		cout << "DLL加载错误";
+		printf("DLL加载错误\n");
 		return 0;
 	}
 
@@ -69,15 +69,15 @@ int main()
 		}
 		catch (const std::exception& ex)
 		{
-			cout << ex.what() << endl;
+			printf("%s \n", ex.what());
 		}
 		MiraiBot::SleepSeconds(1);
 	}
-	cout << "Bot Working..." << endl << "\nAll config files of this program adopt UTF-8 character encoding.\n\nReload the config file, please restart the program...\n\n";
+	printf("Bot已上线\n\n如果刷新config文件，请重启程序\n\n");
 
 	auto a = async(TimeLoop, d["更新时间"].GetInt(), ref(proxy), ref(proxy_http), ref(bot), ref(master));
 	CommandReload();
-	cout << "已抛出时钟线程\n";
+	printf("已抛出时钟线程\n");
 
 	map<int64_t, bool> search_map;
 
@@ -229,6 +229,10 @@ int main()
 						{
 							GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(yid_info)->GetString());
 							int msid = m.Reply(MessageChain().Image(img));
+							if (d["发送图片ID"].GetBool())
+							{
+								bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain("Y站图片ID：").Plain(id_res.str(1)), msid);
+							}
 							if (!d["是否缓存图片"].GetBool())
 							{
 								_sleep(3 * 1000);
@@ -601,7 +605,7 @@ int main()
 			}
 			catch (const std::exception& ex)
 			{
-				cout << ex.what() << endl;
+				printf("%s \n", ex.what());
 				bot.SendMessage(QQ_t(master), MessageChain().Plain(ex.what()));
 			}
 		});
@@ -647,7 +651,7 @@ int main()
 			}
 			catch (const std::exception& err)
 			{
-				cout << err.what() << endl;
+				printf("%s \n", err.what());
 				bot.SendMessage(QQ_t(master), MessageChain().Plain(err.what()));
 			}
 		});

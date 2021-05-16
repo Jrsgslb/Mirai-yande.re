@@ -128,7 +128,11 @@ Document yande(string plain, bool proxy, string https, int64_t group_num, bool f
 	}
 	catch (const std::exception& err)
 	{
-		cout << err.what() << endl;
+		Document info;
+		printf("%s \n", err.what());
+		Pointer("/code").Set(info, 0);
+		Pointer("/info").Set(info, "发生错误，详见控制台");
+		return info;
 	}
 }
 //y站指定id图片获取
@@ -221,7 +225,7 @@ Document yid(string id, bool proxy, string https, int64_t group_num)
 	catch (const std::exception& err)
 	{
 		Document info;
-		cout << err.what() << endl;
+		printf("%s \n", err.what());
 		Pointer("/code").Set(info, 0);
 		Pointer("/info").Set(info, "发生错误，详见控制台");
 		return info;
@@ -260,7 +264,7 @@ bool ClearTemp()
 			if (file != "num.ini")
 			{
 				file = "./temp/" + file;
-				cout << "Del:" << findData.name << endl;
+				printf("Del: %s \n", findData.name);
 				remove(file.c_str());
 			}
 		}

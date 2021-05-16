@@ -32,14 +32,15 @@ public:
 			}
 			if (r.status_code != 200)
 			{
-				std::cout << r.error.message << std::endl;
+				printf("%s \n", r.error.message.c_str());
 				return "";
 			}
 			return r.text;
 		}
 		catch (const std::exception& err)
 		{
-			std::cout << err.what() << std::endl << r.error.message << std::endl;
+			printf("%s \n %s \n", err.what(), r.error.message.c_str());
+			return "";
 		}
 	};
 	//Get请求（Bilibili）
@@ -59,14 +60,15 @@ public:
 			
 			if (r.status_code != 200)
 			{
-				std::cout << r.error.message << std::endl;
+				printf("%s \n", r.error.message.c_str());
 				return "";
 			}
 			return r.text;
 		}
 		catch (const std::exception& err)
 		{
-			std::cout << err.what() << std::endl << r.error.message << std::endl;
+			printf("%s \n %s \n", err.what(), r.error.message.c_str());
+			return "";
 		}
 	};
 	//Get-pixiv砖用
@@ -85,14 +87,15 @@ public:
 			}
 			if (r.status_code != 200)
 			{
-				std::cout << r.error.message << std::endl;
+				printf("%s \n", r.error.message.c_str());
 				return "";
 			}
 			return r.text;
 		}
 		catch (const std::exception& err)
 		{
-			std::cout << err.what() << std::endl << r.error.message << std::endl;
+			printf("%s \n %s \n", err.what(), r.error.message.c_str());
+			return "";
 		}
 	};
 	//Post请求
@@ -111,14 +114,15 @@ public:
 			}
 			if (r.status_code != 200)
 			{
-				std::cout << r.error.message << std::endl;
+				printf("%s \n", r.error.message.c_str());
 				return "";
 			}
 			return r.text;
 		}
 		catch (const std::exception& err)
 		{
-			std::cout << err.what() << std::endl << r.error.message << std::endl;
+			printf("%s \n %s \n", err.what(), r.error.message.c_str());
+			return "";
 		}
 	};
 	//下载图片到本地

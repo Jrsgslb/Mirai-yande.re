@@ -157,7 +157,7 @@ bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTyp
 	}
 	catch (const std::exception& err)
 	{
-		cout << err.what() << endl;
+		printf("%s \n", err.what());
 		return false;
 	}
 }
@@ -294,7 +294,7 @@ bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTy
 	}
 	catch (const std::exception& err)
 	{
-		cout << err.what() << endl;
+		printf("%s \n", err.what());
 		return false;
 	}
 }

@@ -53,6 +53,11 @@ void Bilibili_live(MiraiBot& bot)
 		url = "https://api.live.bilibili.com/room/v1/Room/getRoomInfoOld?mid=" + uid;
 		txt = r.Http_Get_Bili(url, false, "1");
 		bili_live.Parse(txt.c_str());
+		if (txt.empty() || Pointer("/code").Get(bili_live)->GetInt() == 1)
+		{
+			printf("连接发生错误，url： %s \n", url.c_str());
+			continue;
+		}
 		int status = Pointer("/data/liveStatus").Get(bili_live)->GetInt();
 		if (status == 1 && !live_status[uid])
 		{
@@ -122,6 +127,11 @@ bool Bilibili_cos(MiraiBot& bot, GID_t gid)
 		url = "https://api.vc.bilibili.com/link_draw/v2/Photo/list?category=cos&type=hot&page_num=" + to_string(page_num) + "&page_size=1";
 		txt = r.Http_Get(url, false, "1");
 		d.Parse(txt.c_str());
+		if (txt.empty() || Pointer("/code").Get(d)->GetInt() == 1)
+		{
+			printf("连接发生错误，url： %s \n", url.c_str());
+			return false;
+		}
 		int size, max;
 		max = Pointer("/data/total_count").Get(d)->GetInt();
 		if (max < page_num)
@@ -143,6 +153,7 @@ bool Bilibili_cos(MiraiBot& bot, GID_t gid)
 	}
 	catch (const std::exception& err)
 	{
-		cout << err.what() << endl;
+		printf("%s \n", err.what());
+		return false;
 	}
 }
