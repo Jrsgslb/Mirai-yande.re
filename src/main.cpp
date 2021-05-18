@@ -88,7 +88,7 @@ int main()
 			{
 				auto mc = m.MessageChain;
 				auto qms = mc.GetAll<QuoteMessage>();
-				string plain = mc.GetPlainText(), adminer = GroupPermissionStr(m.Sender.Permission);
+				string plain = mc.GetPlainText(), admin_str = GroupPermissionStr(m.Sender.Permission);
 				vector<ImageMessage> imgs = mc.GetAll<ImageMessage>();
 				bool admin;
 				int64_t gid_64, qq_64;//大概会优化一下？
@@ -99,7 +99,7 @@ int main()
 				//regex bili_;
 				cmatch bili_live_res;
 				//发送者权限判断
-				if (adminer == "ADMINISTRATOR" || adminer == "OWNER" || qq_64 == master)
+				if (admin_str == "ADMINISTRATOR" || admin_str == "OWNER" || qq_64 == master)
 				{
 					admin = true;
 				}
@@ -130,7 +130,17 @@ int main()
 				//热门cos
 				if (plain == d["组图cos"].GetString())
 				{
-					m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+					if (d["是否发送提示语"].GetBool())
+					{
+						if (d["提示语引用回复"].GetBool())
+						{
+							m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+						}
+						else
+						{
+							m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
+						}
+					}
 					if (!Bilibili_cos(m.GetMiraiBot(), m.Sender.Group.GID))
 					{
 						m.QuoteReply(MessageChain().Plain("发送错误，详见控制台"));
@@ -181,7 +191,7 @@ int main()
 				}
 				*/
 				//R18开启
-				if (plain == d["R18开启"].GetString() && admin)
+				if (admin && plain == d["R18开启"].GetString())
 				{
 					if (MessageR18(qq_64, gid_64, true))
 						m.QuoteReply(MessageChain().Plain("开启成功"));
@@ -190,7 +200,7 @@ int main()
 					return;
 				}
 				//R18关闭
-				if (plain == d["R18关闭"].GetString() && admin)
+				if (admin && plain == d["R18关闭"].GetString())
 				{
 					if (MessageR18(qq_64, gid_64, false))
 						m.QuoteReply(MessageChain().Plain("关闭成功"));
@@ -211,14 +221,24 @@ int main()
 					return;
 				}
 				//yid
-				if (strstr(plain.c_str(), d["yid"].GetString()))
+				if (plain.find(d["yid"].GetString()) == 0)
 				{
 					regex id_regex("([0-9]{1,12})");
 					cmatch id_res;
 					if (regex_search(plain.c_str(),id_res , id_regex))
 					{
 						Document yid_info;
-						m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
+						if (d["是否发送提示语"].GetBool())
+						{
+							if (d["提示语引用回复"].GetBool())
+							{
+								m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+							}
+							else
+							{
+								m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
+							}
+						}
 						yid_info = yid(id_res.str(1), proxy, proxy_http, gid_64);
 						if (Pointer("/code").Get(yid_info)->GetInt() == 0)
 						{
@@ -253,13 +273,23 @@ int main()
 					}
 				}
 				//pid
-				if (strstr(plain.c_str(), d["pid"].GetString()))
+				if (plain.find(d["pid"].GetString()) == 0)
 				{
 					regex id_regex("([0-9]{1,12})");
 					cmatch id_res;
 					if (regex_search(plain.c_str(), id_res, id_regex))
 					{
-						m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
+						if (d["是否发送提示语"].GetBool())
+						{
+							if (d["提示语引用回复"].GetBool())
+							{
+								m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+							}
+							else
+							{
+								m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
+							}
+						}
 						if (!Pixiv_id(proxy, proxy_http, id_res.str(1),m.GetMiraiBot(), gid_64, m.MessageId()))
 						{
 							m.QuoteReply(MessageChain().Plain("发生错误，详见控制台"));
@@ -268,7 +298,7 @@ int main()
 					}
 				}
 				//订阅相关
-				if (regex_search(plain.c_str(), bili_live_res, bili_live_regex) && admin)
+				if (admin && regex_search(plain.c_str(), bili_live_res, bili_live_regex))
 				{
 					string bili_live_json_txt = ReloadFile("./config/bili/live.json"), temp, newUid, newId;
 					Document bili_live_json;
@@ -517,7 +547,17 @@ int main()
 				//y站热门榜
 				if (plain == d["y站热榜"].GetString() && MessageLimit(d["y站热榜"].GetString(), qq_64, gid_64, admin))
 				{
-					m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+					if (d["是否发送提示语"].GetBool())
+					{
+						if (d["提示语引用回复"].GetBool())
+						{
+							m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+						}
+						else
+						{
+							m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
+						}
+					}
 					Document Hot_img_json;
 					Hot_img_json = Hot_Img(proxy, proxy_http, gid_64, d["发送原图"].GetBool());
 					if (Pointer("/code").Get(Hot_img_json)->GetInt() == 0)
@@ -549,7 +589,17 @@ int main()
 				{
 					if (MessageLimit(plain, qq_64, gid_64, admin))
 					{
-						m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+						if (d["是否发送提示语"].GetBool())
+						{
+							if (d["提示语引用回复"].GetBool())
+							{
+								m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+							}
+							else
+							{
+								m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
+							}
+						}
 						Document yand;
 						yand = yande(plain, proxy, proxy_http, gid_64, true, d["发送原图"].GetBool());
 						int max_send = Pointer("/count").Get(yand)->GetInt(), MsId[256];
@@ -603,10 +653,13 @@ int main()
 					return;
 				}
 			}
-			catch (const std::exception& ex)
+			catch (const std::exception& err)
 			{
-				printf("%s \n", ex.what());
-				bot.SendMessage(QQ_t(master), MessageChain().Plain(ex.what()));
+				printf("%s \n", err.what());
+				if (d["Debug"].GetString())
+				{
+					bot.SendMessage(QQ_t(master), MessageChain().Plain(err.what()));
+				}
 			}
 		});
 
@@ -652,7 +705,10 @@ int main()
 			catch (const std::exception& err)
 			{
 				printf("%s \n", err.what());
-				bot.SendMessage(QQ_t(master), MessageChain().Plain(err.what()));
+				if (d["Debug"].GetString())
+				{
+					bot.SendMessage(QQ_t(master), MessageChain().Plain(err.what()));
+				}
 			}
 		});
 

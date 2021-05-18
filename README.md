@@ -16,6 +16,7 @@ Mirai-Api-Http 版本 1.11+
     "port": "Mirai-Api-Http的端口",
     "qq": "机器人的QQ号",
     "key": "Mirai-Api-Http的Auth密码",
+    "Debug": true,
 
     "是否使用代理": true,
     "proxy": "代理地址",
@@ -127,7 +128,7 @@ send=3
 > 注意:某些群因为莫名其妙的原因会导致报错，报错内容为:`mirai-api-http 错误: 无操作权限` 应该为Mirai-api-http的某些bug
 ### cos相关
 #### 单图cos
-[Api](htts://api.jrsgslb.cn/cos)
+图片源： [Api](htts://api.jrsgslb.cn/cos)
 #### 组图cos
 从b站的api内返回一组图片
 > 注意：如果随机到的值b站为空的话，则会导致闪退报错
@@ -141,4 +142,4 @@ send=3
 - Boost
 - cpr
 
-[图文说明档](https://jrsgslb.cn)~~持续咕咕咕~~
+~~[图文说明档](https://jrsgslb.cn)持续咕咕咕~~
