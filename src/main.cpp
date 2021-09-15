@@ -1,8 +1,12 @@
 // 注意: 本项目的所有源文件都必须是 UTF-8 编码
-#include <iostream>
-#include <map>
+#define MIRAICPP_STATICLIB
 
+#include <iostream>
+#include <regex>
+#include <map>
 #include <rapidjson/pointer.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 #include <future>
 
 #include <mirai.h>
@@ -13,91 +17,161 @@
 #include "../include/yande.h"
 #include "../include/Bilibili.h"
 #include "../include/Pixiv.h"
-#include <rapidjson\stringbuffer.h>
-#include <rapidjson\writer.h>
+
+
+//创建config全局变量
+/*      变量对应关系
+proxy --- /代理/开关
+debug --- Debug
+qute_search --- /搜图/配置/引用回复搜索
+save_img ---  /自定义发图/配置/缓存图片
+original_img ---  /自定义发图/配置/发送原图
+recall ---  /自定义发图/配置/撤回
+send_imgid ---  /自定义发图/配置/发送图片ID
+send_msg ---  /自定义发图/配置/发送提示语
+qute_send ---  /自定义发图/配置/提示语引用回复
+MemberCtrl --- /自定义发图/配置/分群控制
+*/
+bool proxy, debug, qute_search, save_img, original_img, recall, send_imgid, send_msg, qute_send, MemberCtrl;
+/*
+master --- 主人
+*/
+int64_t master;
+/*
+time_wait --- /搜图/配置/等待时间
+match --- /搜图/配置/匹配度
+time_recall ---  /自定义发图/配置/撤回延时
+time_updata --- 更新时间
+*/
+int time_wait, match, time_recall, time_updata;
+/*
+proxy_add --- /代理/地址
+command_search_in --- /搜图/指令/开启
+command_search_out --- /搜图/指令/关闭
+search_api_key --- /搜图/配置/api_key
+command_cos_hot --- /cos/组图
+command_cos_one --- /cos/单图
+command_yande_hot --- /自定义发图/指令/日排行榜
+*/
+string proxy_add, command_search_in, command_search_out, search_api_key, command_cos_hot, command_cos_one, command_yande_hot;
+/*
+reply_limit --- 频率限制回复语
+command_r18_on --- /自定义发图/指令/开启R18
+command_r18_off --- /自定义发图/指令/关闭R18
+command_yande_id --- /自定义发图/指令/id图片
+command_pixiv_id --- /pixiv/指令/id图片
+command_set_essence --- 精华消息
+reply_yande_msg ---  /自定义发图/配置/提示语
+*/
+string reply_limit, command_r18_on, command_r18_off, command_yande_id, command_pixiv_id, command_set_essence, reply_yande_msg;
+/*
+command_reload --- /刷新配置文件
+proxy_rule --- /代理/协议
+*/
+string command_reload, proxy_rule;
+//读取配置文件
+void ReloadConfig()
+{
+	//读取config
+	Document s;
+	string json = ReloadFile("./config.json");
+	if (json.empty())
+	{
+		throw std::runtime_error("读取 config.json 文件错误\n");
+	}
+	s.Parse(json.c_str());
+	//代理
+	proxy = Pointer("/代理/开关").Get(s)->GetBool();
+	proxy_add = Pointer("/代理/地址").Get(s)->GetString();
+	proxy_rule = Pointer("/代理/协议").Get(s)->GetString();
+	//未归类
+	master = Pointer("/主人").Get(s)->GetInt64();
+	command_set_essence = Pointer("/精华消息").Get(s)->GetString();
+	debug = Pointer("/Debug").Get(s)->GetBool();
+	time_updata = Pointer("/更新时间").Get(s)->GetInt();
+	reply_limit = Pointer("/频率限制回复语").Get(s)->GetString();
+	command_reload = Pointer("/刷新配置文件").Get(s)->GetString();
+	//pixiv
+	command_pixiv_id = Pointer("/pixiv/指令/id图片").Get(s)->GetString();
+	//自定义发图
+	command_r18_on = Pointer("/自定义发图/指令/开启R18").Get(s)->GetString();
+	command_r18_off = Pointer("/自定义发图/指令/关闭R18").Get(s)->GetString();
+	command_yande_id = Pointer("/自定义发图/指令/id图片").Get(s)->GetString();
+	command_yande_hot = Pointer("/自定义发图/指令/日排行榜").Get(s)->GetString();
+	reply_yande_msg = Pointer("/自定义发图/配置/提示语").Get(s)->GetString();
+	recall = Pointer("/自定义发图/配置/撤回").Get(s)->GetBool();
+	save_img = Pointer("/自定义发图/配置/缓存图片").Get(s)->GetBool();
+	send_imgid = Pointer("/自定义发图/配置/发送图片ID").Get(s)->GetBool();
+	original_img = Pointer("/自定义发图/配置/发送原图").Get(s)->GetBool();
+	MemberCtrl = Pointer("/自定义发图/配置/分群控制").Get(s)->GetBool();
+	send_msg = Pointer("/自定义发图/配置/发送提示语").Get(s)->GetBool();
+	qute_send = Pointer("/自定义发图/配置/提示语引用回复").Get(s)->GetBool();
+	time_recall = Pointer("/自定义发图/配置/撤回延时").Get(s)->GetInt();
+	//搜图
+	command_search_in = Pointer("/搜图/指令/开启").Get(s)->GetString();
+	command_search_out = Pointer("/搜图/指令/关闭").Get(s)->GetString();
+	search_api_key = Pointer("/搜图/配置/api_key").Get(s)->GetString();
+	qute_search = Pointer("/搜图/配置/引用回复搜索").Get(s)->GetBool();
+	time_wait = Pointer("/搜图/配置/等待时间").Get(s)->GetInt();
+	match = Pointer("/搜图/配置/匹配度").Get(s)->GetInt();
+	//cos
+	command_cos_one = Pointer("/cos/单图").Get(s)->GetString();
+	command_cos_hot = Pointer("/cos/组图").Get(s)->GetString();
+
+	return;
+}
 
 int main()
 {
 	using namespace std;
 	using namespace Cyan;
 
-	if (!StartCheck())
-	{
-		printf("DLL加载错误\n");
-		return 0;
-	}
-
 #if defined(WIN32) || defined(_WIN32)
 	// 切换代码页，让 CMD 可以显示 UTF-8 字符
 	system("chcp 65001");
-	SetConsoleTitle("Mirai-yande.re");
+	//SetConsoleTitle("Mirai-yande.re");
 	system("cls");
 #endif
-
-	//读取config
-	Document d;
-	string rjson = ReloadFile("./config.json");
-	if (rjson.empty())
+	printf("初次使用请在 config.json 和 mah.json 文件内写入配置\n配置文件示例见 https://github.com/Jrsgslb/Mirai-yande.re/blob/main/README.md \n");
+	
+	//自动登录
+	MiraiBot bot;
+	SessionOptions opts;
+	try
 	{
+		StartCheck();
+		ReloadConfig();
+		opts = SessionOptions::FromJsonFile("./mah.json");
+	}
+	catch (const std::exception& err)
+	{
+		printf("%s \n", err.what());
+		cin.get(); 
 		return 0;
 	}
-	d.Parse(rjson.c_str());
-	
-	int64_t port, QQ_num, master;
+	bot.Connect(opts);
+	//检测版本
+	CheckVersion(bot.GetMiraiApiHttpVersion(), bot.GetMiraiCppVersion(), "1.2.0");
+	//抛出循环线程
+	auto a = async(TimeLoop, time_updata, time_wait, ref(proxy), ref(proxy_rule), ref(proxy_add), ref(bot), ref(master));
 
-	port = atoi(d["port"].GetString());
-	stringstream stream;
-	stream << d["qq"].GetString();
-	stream >> QQ_num;
-	stream.clear();
-	QQ_t qq = QQ_t(QQ_num);
-
-	bool proxy = d["是否使用代理"].GetBool();
-	string proxy_http;
-	proxy_http = d["proxy"].GetString();
-	master = d["主人"].GetInt64();
-
-	//自动登录
-	MiraiBot bot(d["host"].GetString(), port);
-	while (true)
-	{
-		try
-		{
-			bot.Auth(d["key"].GetString(), qq);
-			bot.SendMessage(QQ_t(master), MessageChain().Plain("Bot已上线\n刷新配置文件请重启Mirai-yande"));
-			break;
-		}
-		catch (const std::exception& ex)
-		{
-			printf("%s \n", ex.what());
-		}
-		MiraiBot::SleepSeconds(1);
-	}
-	printf("Bot已上线\n\n如果刷新config文件，请重启程序\n\n");
-
-	auto a = async(TimeLoop, d["更新时间"].GetInt(), ref(proxy), ref(proxy_http), ref(bot), ref(master));
-	CommandReload();
-	printf("已抛出时钟线程\n");
-
-	map<int64_t, bool> search_map;
+	//订阅消息正则
+	regex bili_live_regex("^(增加|开启|删除|关闭)(动态|直播)订阅(?:Uid|UID|uid):?(\\d+)$");
+	cmatch bili_live_res;
 
 	bot.On<GroupMessage>(
 		[&](GroupMessage m)
 		{
 			try
 			{
-				auto mc = m.MessageChain;
+				auto &mc = m.MessageChain;
 				auto qms = mc.GetAll<QuoteMessage>();
 				string plain = mc.GetPlainText(), admin_str = GroupPermissionStr(m.Sender.Permission);
 				vector<ImageMessage> imgs = mc.GetAll<ImageMessage>();
 				bool admin;
-				int64_t gid_64, qq_64;//大概会优化一下？
+				int64_t gid_64, qq_64;//大概会优化一下?
 				gid_64 = m.Sender.Group.GID.ToInt64();
 				qq_64 = m.Sender.QQ.ToInt64();
-				//订阅消息正则
-				regex bili_live_regex("^(增加|删除|关闭)直播订阅(?:Uid|UID|uid):?(\\d+)$");
-				//regex bili_;
-				cmatch bili_live_res;
 				//发送者权限判断
 				if (admin_str == "ADMINISTRATOR" || admin_str == "OWNER" || qq_64 == master)
 				{
@@ -110,43 +184,21 @@ int main()
 				//图片消息
 				if (imgs.size() != 0)
 				{
-					if (m.AtMe() || search_map[qq_64])
+					if (m.AtMe() || Search_check(m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64()))
 					{
-						if (!snao_search(proxy, proxy_http, imgs[0].ToMiraiImage().Url, m.GetMiraiBot(), MessageType::GroupMessage, gid_64, m.MessageId(), d["匹配度"].GetInt()))
+						Search_switch(true, m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64());
+						if (!snao_search(proxy, proxy_rule, proxy_add, imgs[0].ToMiraiImage().Url, m.GetMiraiBot(), MessageType::GroupMessage, gid_64, m.MessageId(), match, search_api_key))
 						{
 							m.QuoteReply(MessageChain().Plain("发生错误，详见控制台"));
 						}
 					}
 					return;
 				}
-				//随机cos
-				if (plain == d["单图cos"].GetString() && MessageLimit(d["单图cos"].GetString(),qq_64, gid_64, admin))
+				//配置文件热重载
+				if (plain == command_reload && qq_64 == master)
 				{
-					GroupImage cos;
-					cos.Url = "https://api.jrsgslb.cn/cos/url.php?return=img";
-					m.Reply(MessageChain().Image(cos));
-					return;
-				}
-				//热门cos
-				if (plain == d["组图cos"].GetString())
-				{
-					if (d["是否发送提示语"].GetBool())
-					{
-						if (d["提示语引用回复"].GetBool())
-						{
-							m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
-						}
-						else
-						{
-							m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
-						}
-					}
-					if (!Bilibili_cos(m.GetMiraiBot(), m.Sender.Group.GID))
-					{
-						m.QuoteReply(MessageChain().Plain("发送错误，详见控制台"));
-						return;
-					}
-					m.QuoteReply(MessageChain().Plain("发电完成"));
+					ReloadConfig();
+					m.QuoteReply(MessageChain().Plain("配置文件重载成功"));
 					return;
 				}
 				//更新tag
@@ -154,7 +206,7 @@ int main()
 				{
 					string tag;
 					m.QuoteReply(MessageChain().Plain("更新中..."));
-					tag = MessageReload(proxy, proxy_http);
+					tag = MessageReload(proxy, proxy_rule, proxy_add);
 					if (tag == "ok")m.QuoteReply(MessageChain().Plain("更新完成"));
 					else
 					{
@@ -172,8 +224,8 @@ int main()
 						m.QuoteReply(MessageChain().Plain("清理失败"));
 					return;
 				}
-				/*
 				//戳全群（做着玩）
+				/*
 				if (plain == "戳亿下" && qq_64 == master)
 				{
 					auto gMembers = bot.GetGroupMembers(m.Sender.Group.GID);
@@ -191,7 +243,7 @@ int main()
 				}
 				*/
 				//R18开启
-				if (admin && plain == d["R18开启"].GetString())
+				if (admin && plain == command_r18_on)
 				{
 					if (MessageR18(qq_64, gid_64, true))
 						m.QuoteReply(MessageChain().Plain("开启成功"));
@@ -200,7 +252,7 @@ int main()
 					return;
 				}
 				//R18关闭
-				if (admin && plain == d["R18关闭"].GetString())
+				if (admin && plain == command_r18_off)
 				{
 					if (MessageR18(qq_64, gid_64, false))
 						m.QuoteReply(MessageChain().Plain("关闭成功"));
@@ -211,289 +263,14 @@ int main()
 				//菜单指令
 				if (plain == "菜单" || plain == "help")
 				{
-					ifstream in("./config/command.txt");
-					string i, menu;
-					while (getline(in, i))
-					{
-						menu = "\n" + i + menu;
-					}
-					m.Reply(MessageChain().At(m.Sender.QQ).Plain(menu.c_str()));
+					//待重写
+					//m.Reply(MessageChain().At(m.Sender.QQ).Plain(ReloadFile("./config/command.txt")));
 					return;
-				}
-				//yid
-				if (plain.find(d["yid"].GetString()) == 0)
-				{
-					regex id_regex("([0-9]{1,12})");
-					cmatch id_res;
-					if (regex_search(plain.c_str(),id_res , id_regex))
-					{
-						Document yid_info;
-						if (d["是否发送提示语"].GetBool())
-						{
-							if (d["提示语引用回复"].GetBool())
-							{
-								m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
-							}
-							else
-							{
-								m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
-							}
-						}
-						yid_info = yid(id_res.str(1), proxy, proxy_http, gid_64);
-						if (Pointer("/code").Get(yid_info)->GetInt() == 0)
-						{
-							m.QuoteReply(MessageChain().Plain(Pointer("/info").Get(yid_info)->GetString()));
-							return;
-						}
-						if (Pointer("/dimg").Get(yid_info)->GetInt() == 1)
-						{
-							GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(yid_info)->GetString());
-							int msid = m.Reply(MessageChain().Image(img));
-							if (d["发送图片ID"].GetBool())
-							{
-								bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain("Y站图片ID：").Plain(id_res.str(1)), msid);
-							}
-							if (!d["是否缓存图片"].GetBool())
-							{
-								_sleep(3 * 1000);
-								remove(Pointer("/name").Get(yid_info)->GetString());
-							}
-							if (d["是否撤回"].GetBool())
-							{
-								_sleep(d["撤回延时"].GetInt() * 1000);
-									bot.Recall(msid);
-							}
-							return;
-						}
-						else
-						{
-							m.QuoteReply(MessageChain().Plain("网络错误"));
-							return;
-						}
-					}
-				}
-				//pid
-				if (plain.find(d["pid"].GetString()) == 0)
-				{
-					regex id_regex("([0-9]{1,12})");
-					cmatch id_res;
-					if (regex_search(plain.c_str(), id_res, id_regex))
-					{
-						if (d["是否发送提示语"].GetBool())
-						{
-							if (d["提示语引用回复"].GetBool())
-							{
-								m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
-							}
-							else
-							{
-								m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
-							}
-						}
-						if (!Pixiv_id(proxy, proxy_http, id_res.str(1),m.GetMiraiBot(), gid_64, m.MessageId()))
-						{
-							m.QuoteReply(MessageChain().Plain("发生错误，详见控制台"));
-							return;
-						}
-					}
 				}
 				//订阅相关
 				if (admin && regex_search(plain.c_str(), bili_live_res, bili_live_regex))
 				{
-					string bili_live_json_txt = ReloadFile("./config/bili/live.json"), temp, newUid, newId;
-					Document bili_live_json;
-					if (bili_live_json_txt.empty())
-					{
-						if (bili_live_res.str(1) == "增加")
-						{
-							Pointer("/0/uid").Set(bili_live_json, bili_live_res.str(2).c_str());
-							temp = "/0/send/0/id";
-							Pointer(temp.c_str()).Set(bili_live_json, gid_64);
-							temp = "/0/send/0/type";
-							Pointer(temp.c_str()).Set(bili_live_json, 0);
-							temp = "/0/send/0/status";
-							Pointer(temp.c_str()).Set(bili_live_json, 1);
-
-							//写入json文件
-							StringBuffer buffer;
-							Writer<StringBuffer> writer(buffer);
-							bili_live_json.Accept(writer);
-
-							const char* output = buffer.GetString();
-							WriteFile("./config/bili/live.json", output);
-							//刷新uid
-							Reload_live_uid();
-							//消息回复
-							m.QuoteReply(MessageChain().Plain(bili_live_res.str(1)).Plain("成功"));
-							return;
-						}
-						else
-						{
-							m.QuoteReply(MessageChain().Plain("请先增加哦！"));
-							return;
-						}
-					}
-					//备份json文件
-					WriteFile("./config/bili/live.backup", bili_live_json_txt);
-					//解析json
-					bili_live_json.Parse(bili_live_json_txt.c_str());
-					//遍历json，是否为新增uid
-					bool isNew_uid = true, isNew_group = true;
-					for (int i = 0; i < Pointer("").Get(bili_live_json)->Size(); i++)
-					{
-						temp = "/" + to_string(i) + "/uid";
-						if (Pointer(temp.c_str()).Get(bili_live_json)->GetString() == bili_live_res.str(2))
-						{
-							isNew_uid = false;
-							newUid = to_string(i);
-							break;
-						}
-					}
-					//如果不是新uid，查询群号是否为新群
-					if (!isNew_uid)
-					{
-						string id_search;
-						id_search = "/" + newUid + "/send";
-						for (int i = 0; i < Pointer(id_search.c_str()).Get(bili_live_json)->Size(); i++)
-						{
-							temp = "/" + newUid + "/send/" + to_string(i) + "/id";
-							if (Pointer(temp.c_str()).Get(bili_live_json)->GetInt64() == gid_64)
-							{
-								isNew_group = false;
-								newId = to_string(i);
-								break;
-							}
-						}
-					}
-					//增加订阅
-					if (bili_live_res.str(1) == "增加")
-					{
-						//新增uid
-						if (isNew_uid)
-						{
-							int num;
-
-							Pointer("/-/uid").Set(bili_live_json, bili_live_res.str(2).c_str());
-							num = Pointer("").Get(bili_live_json)->Size() - 1;
-							temp = "/" + to_string(num) + "/send/0/id";
-							Pointer(temp.c_str()).Set(bili_live_json, gid_64);
-							temp = "/" + to_string(num) + "/send/0/type";
-							Pointer(temp.c_str()).Set(bili_live_json, 0);
-							temp = "/" + to_string(num) + "/send/0/status";
-							Pointer(temp.c_str()).Set(bili_live_json, 1);
-						}
-						else    //增加群组
-						{
-							if (isNew_group)
-							{
-								int num;
-								temp = "/" + newUid + "/send/-/id";
-								Pointer(temp.c_str()).Set(bili_live_json, gid_64);
-								temp = "/" + newUid + "/send";
-								num = Pointer(temp.c_str()).Get(bili_live_json)->Size() - 1;
-								temp = "/" + newUid + "/send/" + to_string(num) + "/type";
-								Pointer(temp.c_str()).Set(bili_live_json, 0);
-								temp = "/" + newUid + "/send/" + to_string(num) + "/status";
-								Pointer(temp.c_str()).Set(bili_live_json, 1);
-							}
-							else
-							{
-								temp = "/" + newUid + "/send/" + newId + "/status";
-								if (Pointer(temp.c_str()).Get(bili_live_json)->GetInt() != 1)
-								{
-									Pointer(temp.c_str()).Set(bili_live_json, 1);
-								}
-								else
-								{
-									m.QuoteReply(MessageChain().Plain("该订阅已存在"));
-									return;
-								}
-							}
-						}
-					}
-					//删除订阅
-					if (bili_live_res.str(1) == "删除")
-					{
-						if (qq_64 != master)
-						{
-							m.QuoteReply(MessageChain().Plain("您无权进行操作"));
-							return;
-						}
-						if (isNew_uid)
-						{
-							m.QuoteReply(MessageChain().Plain("该订阅不存在"));
-							return;
-						}
-						temp = "/" + newUid;
-						Pointer(temp.c_str()).Erase(bili_live_json);
-					}
-					//关闭订阅
-					if (bili_live_res.str(1) == "关闭")
-					{
-						if (isNew_uid)
-						{
-							m.QuoteReply(MessageChain().Plain("该订阅不存在"));
-							return;
-						}
-						else if (isNew_group)
-						{
-							m.QuoteReply(MessageChain().Plain("本群并未开启此订阅"));
-							return;
-						}
-						else
-						{
-							//对于一个uid无群开启的处理
-							//简单的判断size
-							temp = "/" + newUid + "/send";
-							int temp_size = Pointer(temp.c_str()).Get(bili_live_json)->Size();
-							if (temp_size == 1)
-							{
-								temp = "/" + newUid;
-								Pointer(temp.c_str()).Erase(bili_live_json);
-							}
-							else
-							{
-								temp = "/" + newUid + "/send/" + newId + "/status";
-								if (Pointer(temp.c_str()).Get(bili_live_json)->GetInt() != 0)
-								{
-									Pointer(temp.c_str()).Set(bili_live_json, 0);
-								}
-								else
-								{
-									m.QuoteReply(MessageChain().Plain("本群并未开启此订阅"));
-									return;
-								}
-								//遍历所有群的状态，查看是否都为关闭
-								temp = "/" + newUid + "/send";
-								bool other = false;
-								for (int i = 0; i < temp_size; i++)
-								{
-									temp = "/" + newUid + "/send/" + to_string(i) + "/status";
-									if (Pointer(temp.c_str()).Get(bili_live_json)->GetInt() == 1)
-									{
-										other = true;
-										break;
-									}
-								}
-								if (!other)
-								{
-									temp = "/" + newUid;
-									Pointer(temp.c_str()).Erase(bili_live_json);
-								}
-							}
-						}
-					}
-					//写入json文件
-					StringBuffer buffer;
-					Writer<StringBuffer> writer(buffer);
-					bili_live_json.Accept(writer);
-
-					const char* output = buffer.GetString();
-					WriteFile("./config/bili/live.json", output);
-					//刷新uid
-					Reload_live_uid();
-					//消息回复
-					m.QuoteReply(MessageChain().Plain(bili_live_res.str(1)).Plain("成功"));
+					Bilibili_match(m.GetMiraiBot(), bili_live_res.str(2), bili_live_res.str(1), bili_live_res.str(3), gid_64, qq_64, master, m.MessageId());
 					return;
 				}
 				//引用回复消息
@@ -501,20 +278,20 @@ int main()
 				{
 					auto id = qms[0].MessageId();
 					//设置精华消息
-					if (plain == d["精华消息"].GetString())
+					if (plain == command_set_essence)
 					{
 						bot.SetEssence(id);
 						return;
 					}
 					//搜图
-					if (strstr(plain.c_str(), d["搜图"].GetString()) != NULL || m.AtMe())
+					if (qute_search && strstr(plain.c_str(), command_search_in.c_str()) != NULL || m.AtMe())
 					{
 						Document ms;
 						ms.Parse(bot.GetGroupMessageFromId(id).ToString().c_str());
 						string type = Pointer("/messageChain/0/type").Get(ms)->GetString();
 						if (type == "Image")
 						{
-							if (!snao_search(proxy, proxy_http, Pointer("/messageChain/0/url").Get(ms)->GetString(), m.GetMiraiBot(), MessageType::GroupMessage, gid_64, id, d["匹配度"].GetInt()))
+							if (!snao_search(proxy, proxy_rule, proxy_add, Pointer("/messageChain/0/url").Get(ms)->GetString(), m.GetMiraiBot(), MessageType::GroupMessage, gid_64, id, match, search_api_key))
 							{
 								m.QuoteReply(MessageChain().Plain("发生错误，详见控制台"));
 								return;
@@ -524,85 +301,194 @@ int main()
 					}
 				}
 				//搜图
-				if (plain == d["搜图"].GetString() && !search_map[qq_64])
+				if (plain == command_search_in)
 				{
-					search_map[qq_64] = true;
-					m.QuoteReply(MessageChain().Plain("搜图模式开启成功,请发送图片吧\n退出搜图请发送:").Plain(d["退出搜图"].GetString()));
-					/*_sleep(180 * 1000);
-					//无奈的超时解决方案
-					if (search_map[qq_64])
+					if (Search_switch(true, m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64()))
 					{
-						search_map[qq_64] = false;
-						m.QuoteReply(MessageChain().Plain("超时已退出搜图模式"));
-					}*/
+						m.QuoteReply(MessageChain().Plain("搜图模式开启成功,请发送图片吧\n退出搜图请发送:").Plain(command_search_out));
+					}
+					else
+					{
+						m.QuoteReply(MessageChain().Plain("您仍处于搜图模式下\n退出搜图请发送:").Plain(command_search_out));
+					}
 					return;
 				}
 				//退出搜图
-				if (plain == d["退出搜图"].GetString() && search_map[qq_64])
+				if (plain == command_search_out)
 				{
-					search_map[qq_64] = false;
-					m.QuoteReply(MessageChain().Plain("嗷呜~"));
+					if (Search_switch(false, m.Sender.QQ.ToInt64(), m.Sender.Group.GID.ToInt64()))
+					{
+						m.QuoteReply(MessageChain().Plain("嗷呜~"));
+					}
 					return;
 				}
-				//y站热门榜
-				if (plain == d["y站热榜"].GetString() && MessageLimit(d["y站热榜"].GetString(), qq_64, gid_64, admin))
+				//频率限制
+				if (MessageLimit(plain, qq_64, gid_64, admin))
 				{
-					if (d["是否发送提示语"].GetBool())
+					//随机cos
+					if (plain == command_cos_one)
 					{
-						if (d["提示语引用回复"].GetBool())
-						{
-							m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
-						}
-						else
-						{
-							m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
-						}
-					}
-					Document Hot_img_json;
-					Hot_img_json = Hot_Img(proxy, proxy_http, gid_64, d["发送原图"].GetBool());
-					if (Pointer("/code").Get(Hot_img_json)->GetInt() == 0)
-					{
-						m.Reply(MessageChain().Plain(Pointer("/info").Get(Hot_img_json)->GetString()));
+						GroupImage cos;
+						cos.Url = "https://api.jrsgslb.cn/cos/url.php?return=img";
+						m.Reply(MessageChain().Image(cos));
 						return;
 					}
-					int msid;
-					GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(Hot_img_json)->GetString());
-					msid = m.Reply(MessageChain().Image(img));
-					if (d["发送图片ID"].GetBool())
+					//热门cos
+					if (plain == command_cos_hot)
 					{
-						bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain("Y站图片ID：").Plain(Pointer("/id").Get(Hot_img_json)->GetString()), msid);
-					}
-					if (!d["是否缓存图片"].GetBool())
-					{
-						_sleep(1 * 1000);
-						remove(Pointer("/name").Get(Hot_img_json)->GetString());
-					}
-					if (d["是否撤回"].GetBool())
-					{
-						_sleep(d["撤回延时"].GetInt() * 1000);
-						bot.Recall(msid);
-					}
-					return;
-				}
-				//自定义发图
-				if (MessageCheck(plain))
-				{
-					if (MessageLimit(plain, qq_64, gid_64, admin))
-					{
-						if (d["是否发送提示语"].GetBool())
+						if (send_msg)
 						{
-							if (d["提示语引用回复"].GetBool())
+							if (qute_send)
 							{
-								m.QuoteReply(MessageChain().Plain(d["发送提示语"].GetString()));
+								m.QuoteReply(MessageChain().Plain(reply_yande_msg));
 							}
 							else
 							{
-								m.Reply(MessageChain().Plain(d["发送提示语"].GetString()));
+								m.Reply(MessageChain().Plain(reply_yande_msg));
+							}
+						}
+						if (!Bilibili_cos(m.GetMiraiBot(), m.Sender.Group.GID))
+						{
+							m.QuoteReply(MessageChain().Plain("发送错误，详见控制台"));
+							return;
+						}
+						m.QuoteReply(MessageChain().Plain("发电完成"));
+						return;
+					}
+					//yid
+					if (plain.find(command_yande_id) == 0)
+					{
+						regex id_regex("([0-9]{1,12})");
+						cmatch id_res;
+						if (regex_search(plain.c_str(), id_res, id_regex))
+						{
+							Document yid_info;
+							if (send_msg)
+							{
+								if (qute_send)
+								{
+									m.QuoteReply(MessageChain().Plain(reply_yande_msg));
+								}
+								else
+								{
+									m.Reply(MessageChain().Plain(reply_yande_msg));
+								}
+							}
+							yid_info = yid(id_res.str(1), proxy, proxy_rule, proxy_add, gid_64);
+							if (Pointer("/code").Get(yid_info)->GetInt() == 0)
+							{
+								m.QuoteReply(MessageChain().Plain(Pointer("/info").Get(yid_info)->GetString()));
+								return;
+							}
+							if (Pointer("/dimg").Get(yid_info)->GetInt() == 1)
+							{
+								GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(yid_info)->GetString());
+								int msid = m.Reply(MessageChain().Image(img));
+								if (send_imgid)
+								{
+									bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain("Y站图片ID：").Plain(id_res.str(1)), msid);
+								}
+								if (!save_img)
+								{
+									_sleep(3 * 1000);
+									remove(Pointer("/name").Get(yid_info)->GetString());
+								}
+								if (recall)
+								{
+									_sleep(time_recall* 1000);
+									bot.Recall(msid);
+								}
+								return;
+							}
+							else
+							{
+								m.QuoteReply(MessageChain().Plain("网络错误"));
+								return;
+							}
+						}
+					}
+					//pid
+					if (plain.find(command_pixiv_id) == 0)
+					{
+						regex id_regex("([0-9]{1,12})");
+						cmatch id_res;
+						if (regex_search(plain.c_str(), id_res, id_regex))
+						{
+							if (send_msg)
+							{
+								if (qute_send)
+								{
+									m.QuoteReply(MessageChain().Plain(reply_yande_msg));
+								}
+								else
+								{
+									m.Reply(MessageChain().Plain(reply_yande_msg));
+								}
+							}
+							if (!Pixiv_id(proxy, proxy_rule, proxy_add, id_res.str(1), m.GetMiraiBot(), gid_64, m.MessageId()))
+							{
+								m.QuoteReply(MessageChain().Plain("发生错误，详见控制台"));
+								return;
+							}
+						}
+					}
+					//y站热门榜
+					if (plain == command_yande_hot)
+					{
+						if (send_msg)
+						{
+							if (qute_send)
+							{
+								m.QuoteReply(MessageChain().Plain(reply_yande_msg));
+							}
+							else
+							{
+								m.Reply(MessageChain().Plain(reply_yande_msg));
+							}
+						}
+						Document Hot_img_json;
+						Hot_img_json = Hot_Img(proxy, proxy_rule, proxy_add, gid_64, original_img);
+						if (Pointer("/code").Get(Hot_img_json)->GetInt() == 0)
+						{
+							m.Reply(MessageChain().Plain(Pointer("/info").Get(Hot_img_json)->GetString()));
+							return;
+						}
+						int msid;
+						GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(Hot_img_json)->GetString());
+						msid = m.Reply(MessageChain().Image(img));
+						if (send_imgid)
+						{
+							bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain("Y站图片ID：").Plain(Pointer("/id").Get(Hot_img_json)->GetString()), msid);
+						}
+						if (!save_img)
+						{
+							_sleep(1 * 1000);
+							remove(Pointer("/name").Get(Hot_img_json)->GetString());
+						}
+						if (recall)
+						{
+							_sleep(time_recall * 1000);
+							bot.Recall(msid);
+						}
+						return;
+					}
+					//自定义发图
+					if (MessageCheck(plain))
+					{
+						if (send_msg)
+						{
+							if (qute_send)
+							{
+								m.QuoteReply(MessageChain().Plain(reply_yande_msg));
+							}
+							else
+							{
+								m.Reply(MessageChain().Plain(reply_yande_msg));
 							}
 						}
 						Document yand;
-						yand = yande(plain, proxy, proxy_http, gid_64, true, d["发送原图"].GetBool());
-						int max_send = Pointer("/count").Get(yand)->GetInt(), MsId[256];
+						yand = yande(plain, proxy, proxy_rule, proxy_add, gid_64, true, original_img);
+						int max_send = Pointer("/count").Get(yand)->GetInt(), MsId[256]{};
 						for (int i = 1; i <= max_send; i++)
 						{
 							if (Pointer("/code").Get(yand)->GetInt() == 0) m.Reply(MessageChain().Plain(Pointer("/info").Get(yand)->GetString()));
@@ -615,12 +501,12 @@ int main()
 								{
 									GroupImage img = bot.UploadGroupImage(Pointer("/name").Get(yand)->GetString());
 									MsId[i] = bot.SendMessage(m.Sender.Group.GID, MessageChain().Image(img));
-									if (d["发送图片ID"].GetBool())
+									if (send_imgid)
 									{
 										id = "Y站图片ID：" + id;
 										bot.SendMessage(m.Sender.Group.GID, MessageChain().Plain(id), MsId[i]);
 									}
-									if (!d["是否缓存图片"].GetBool())
+									if (!save_img)
 									{
 										_sleep(1 * 1000);
 										remove(Pointer("/name").Get(yand)->GetString());
@@ -633,30 +519,31 @@ int main()
 								}
 								if (i != max_send)
 								{
-									yand = yande(plain, proxy, proxy_http, gid_64, true, d["发送原图"].GetBool());
+									yand = yande(plain, proxy, proxy_rule, proxy_add, gid_64, true, original_img);
 								}
 							}
 						}
-						if (d["是否撤回"].GetBool())
+						if (recall)
 						{
-							_sleep(d["撤回延时"].GetInt() * 1000);
+							_sleep(time_recall * 1000);
 							for (int i = 1; i <= max_send; i++)
 							{
 								bot.Recall(MsId[i]);
 							}
 						}
+						return;
 					}
-					else
-					{
-						m.QuoteReply(MessageChain().Plain(d["频率限制回复语"].GetString()));
-					}
+				}
+				else
+				{
+				    m.QuoteReply(MessageChain().Plain(reply_limit));
 					return;
 				}
 			}
 			catch (const std::exception& err)
 			{
 				printf("%s \n", err.what());
-				if (d["Debug"].GetString())
+				if (debug)
 				{
 					bot.SendMessage(QQ_t(master), MessageChain().Plain(err.what()));
 				}
@@ -669,17 +556,15 @@ int main()
 			try
 			{
 				int64_t qq_64;
+				auto& mc = m.MessageChain;
 				qq_64 = m.Sender.QQ.ToInt64();
-				auto plain = m.MessageChain;
+				string plain = mc.GetPlainText();
 				//tag更新
-				if (plain.GetPlainText() == "更新tag" && qq_64 == master)
+				if (plain == "更新tag" && qq_64 == master)
 				{
 					string tag;
 					m.QuoteReply(MessageChain().Plain("更新中..."));
-					if (proxy)
-						tag = MessageReload(true, proxy_http);
-					else
-						tag = MessageReload(false, proxy_http);
+					tag = MessageReload(proxy, proxy_rule, proxy_add);
 					if (tag == "ok")m.QuoteReply(MessageChain().Plain("更新完成"));
 					else
 					{
@@ -691,28 +576,56 @@ int main()
 				}
 				//搜图
 				Document img;
-				img.Parse(plain.ToString().c_str());
+				img.Parse(mc.ToString().c_str());
 				if (strstr(Pointer("/0/type").Get(img)->GetString(), "Image"))
 				{
-					if (!snao_search(proxy, proxy_http, Pointer("/0/url").Get(img)->GetString(), m.GetMiraiBot(), MessageType::FriendMessage, qq_64, m.MessageId(), d["匹配度"].GetInt()))
+					if (!snao_search(proxy, proxy_rule, proxy_add, Pointer("/0/url").Get(img)->GetString(), m.GetMiraiBot(), MessageType::FriendMessage, qq_64, m.MessageId(), match, search_api_key))
 					{
 						m.Reply(MessageChain().Plain("发生错误，详见控制台"));
 						return;
 					}
 					return;
 				}
+				//动态和直播订阅
+				if (regex_search(plain.c_str(), bili_live_res, bili_live_regex))
+				{
+					Bilibili_match(m.GetMiraiBot(), bili_live_res.str(2), bili_live_res.str(1), bili_live_res.str(3), qq_64, master);
+					return;
+				}
 			}
 			catch (const std::exception& err)
 			{
 				printf("%s \n", err.what());
-				if (d["Debug"].GetString())
+				if (debug)
 				{
 					bot.SendMessage(QQ_t(master), MessageChain().Plain(err.what()));
 				}
 			}
 		});
 
-	bot.EventLoop();
+	bot.On<LostConnection>
+		([&](LostConnection e)
+		{
+			cout << e.ErrorMessage << " (" << e.Code << ")" << endl;
+			while (true)
+			{
+				try
+				{
+					printf("尝试与 mirai-api-http 重新建立连接...\n");
+					bot.Reconnect();
+					break;
+				}
+				catch (const std::exception& ex)
+				{
+					printf("%s \n", ex.what());
+				}
+				MiraiBot::SleepSeconds(1);
+			}
+			printf("成功与 mirai-api-http 重新建立连接!\n");
+		});
+	char ch;
+	while ((ch = getchar()) != 'q');
+	bot.Disconnect();
 
 	return 0;
 }

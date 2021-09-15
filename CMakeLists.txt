@@ -3,11 +3,11 @@ cmake_minimum_required (VERSION 3.1)
 # 项目名称
 project(Mirai-yande)
 # 设置项目的 C++ 标准
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 # 不要构建 mirai-cpp 自带的 examples
 set(MIRAI_CPP_BUILD_EXAMPLES OFF CACHE BOOL "Build examples" FORCE)
 #添加vcpkg
-set(-DCMAKE_TOOLCHAIN_FILE=D:/Dl/vcpkg-2020.07/scripts/buildsystems/vcpkg.cmake)
+set(-DCMAKE_TOOLCHAIN_FILE=D:/App files/vcpkg-2020.07/scripts/buildsystems/vcpkg.cmake)
 # 添加子模块 mirai-cpp
 add_subdirectory(mirai-cpp)
 #cpr库
@@ -37,5 +37,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${BOOST_PROPERTY_TREE_INCLUDE_DIRS
 target_compile_definitions(${PROJECT_NAME} PRIVATE MIRAICPP_STATICLIB)
 # gcc 要连接 pthread
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
+    # 链接 pthread
+    target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
+    # 静态链接 libgcc 和 libstdc++
+    target_link_libraries(${PROJECT_NAME} PRIVATE -static-libgcc -static-libstdc++)
 endif()

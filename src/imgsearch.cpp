@@ -5,9 +5,61 @@
 #include <regex>
 
 #include <rapidjson/pointer.h>
+//解析json，使所有值都以字符串的方式返回
+string json_parse(Value& json, string start, string end)
+{
+	string point = start + "/" + end;
+	//不存在的值
+	if (!Pointer(start.c_str()).Get(json)->HasMember(end.c_str()))
+	{
+		return string("");
+	}
+	//字符串
+	if (Pointer(point.c_str()).Get(json)->IsString())
+	{
+		return Pointer(point.c_str()).Get(json)->GetString();
+	}
+	//整形
+	if (Pointer(point.c_str()).Get(json)->IsInt())
+	{
+		return to_string(Pointer(point.c_str()).Get(json)->GetInt());
+	}
+	//int64
+	if (Pointer(point.c_str()).Get(json)->IsInt64())
+	{
+		return to_string(Pointer(point.c_str()).Get(json)->GetInt64());
+	}
+	//布尔
+	if (Pointer(point.c_str()).Get(json)->IsBool())
+	{
+		if (Pointer(point.c_str()).Get(json)->IsTrue())
+		{
+			return string("true");
+		}
+		else
+		{
+			return string("false");
+		}
+	}
+	//数组
+	if (Pointer(point.c_str()).Get(json)->IsArray())
+	{
+		point = point + "/0";
+		return Pointer(point.c_str()).Get(json)->GetString();
+	}
+	//浮点型
+	if (Pointer(point.c_str()).Get(json)->IsDouble())
+	{
+		return to_string(Pointer(point.c_str()).Get(json)->GetDouble());
+	}
+	//NULL
+	if (Pointer(point.c_str()).Get(json)->IsNull())
+	{
+		return string("");
+	}
+}
 
-
-bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageType type, int64_t id, int msid)
+bool a2d_search(bool proxy, string proxy_rule, string proxy_add, string url, MiraiBot& bot, MessageType type, int64_t id, int msid)
 {
 	//获取色调与特征信息
 	try
@@ -15,7 +67,7 @@ bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTyp
 		Document p;
 		string host, file, color, bovw, repl_color, repl_bovw;
 		host = "https://ascii2d.net/search/url/" + url;
-		bool D_img = true, msty = true;
+		bool msty = true;
 		//辨认消息
 		if (type == MessageType::GroupMessage)
 		{
@@ -27,18 +79,22 @@ bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTyp
 		}
 		//GET
 		HttpRequest r;
-		color = r.Http_Get(host, proxy, https);
+		color = r.Http_Get(host, proxy, proxy_rule, proxy_add);
 		//正则匹配图片hash和色调搜索结果
 		regex search_hash("class='hash'>(.*?)<");
 		regex search_res("rel=\"noopener\" href=\"(.*?)\">(.*?)<");
 		smatch hash, res, pic;
 		string::const_iterator iterStart = color.begin(), iterEnd = color.end();
-		regex_search(color, hash, search_hash);
+		if (!regex_search(color, hash, search_hash))
+		{
+			printf("正则匹配失败，可能为网络错误\n");
+			return false;
+		}
 		//特征搜索
 		host = "https://ascii2d.net/search/bovw/" + hash.str(1);
-		bovw = r.Http_Get(host, proxy, https);
+		bovw = r.Http_Get(host, proxy, proxy_rule, proxy_add);
 		//判断状态码
-		if (color.size() < 100 && bovw.size() < 100)
+		if (bovw.empty())
 		{
 			return false;
 		}
@@ -61,12 +117,8 @@ bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTyp
 		file = "./temp/" + file.substr(20, 50);
 		host = "https://ascii2d.net" + pic.str(1);
 		//下载图片
-		if (!r.DownloadImg(host, file, proxy, https))
-		{
-			D_img = false;
-		}
 		//发送消息
-		if (D_img)
+		if (r.DownloadImg(host, file, proxy, proxy_rule, proxy_add))
 		{
 			if (msty)
 			{
@@ -103,11 +155,6 @@ bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTyp
 		file = pic.str(1);
 		file = "./temp/" + file.substr(20, 50);
 		host = "https://ascii2d.net" + pic.str(1);
-		//下载图片
-		if (!r.DownloadImg(host, file, proxy, https))
-		{
-			D_img = false;
-		}
 		//取出特征结果
 		iterStart = bovw.begin(), iterEnd = bovw.end();
 		res_url.clear();
@@ -121,7 +168,7 @@ bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTyp
 		//构建消息
 		repl_bovw = res_author[0] + "\n原图地址:" + res_url[0] + "\nAuthor:" + res_url[1];
 		//发送消息
-		if (D_img)
+		if (r.DownloadImg(host, file, proxy, proxy_rule, proxy_add))
 		{
 			if (msty)
 			{
@@ -162,7 +209,7 @@ bool a2d_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTyp
 	}
 }
 
-bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageType type, int64_t id, int msid, int min_match)
+bool snao_search(bool proxy, string proxy_rule, string proxy_add, string url, MiraiBot& bot, MessageType type, int64_t id, int msid, int min_match, string api_key)
 {
 	Document d;
 	string txt, snao_res, rurl;
@@ -179,73 +226,60 @@ bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTy
 		msty = false;
 	}
 	//搜索图片
-	rurl = "url=" + url;
-	txt = r.Http_Post("https://saucenao.com/search.php", proxy, https, rurl);
+	rurl = "https://saucenao.com/search.php?db=999&output_type=2&testmode=1&numres=1&url=" + url + "&api_key=" + api_key;
+	txt = r.Http_Get(rurl, proxy, proxy_rule, proxy_add);
 
-	if (txt.size() < 200)
+	if (txt.empty())
 	{
 		return false;
 	}
+
 	//解析搜索结果
 	try
 	{
-		regex match_regex("<div class=\"resultsimilarityinfo\">(.*?)%</div>");
-		regex search_regex("<table class=\"resulttable\">(.*?)</table>");
-		regex img_regex("src=\"([http|https](.*?))\"");
-		regex info_regex("<div class=\"resultcontentcolumn\">(.*?)</div>");
-		regex title_regex("<strong>(.*?)</strong>");
-		regex id_regex("<a href=\"(.*?)\" class=\"linkify\">(.*?)</a>");
-		regex res_regex("<div class=\"resultmiscinfo\"><a href=\"(.*?)\">(.*?)<\/div>");
-		smatch match_res, id_res, img_res, title_res, search_res, info_res, res_res;
-		string res, info, name;
-		regex_search(txt, search_res, search_regex);//匹配第一个搜索结果
-		res = search_res.str(1);
-		regex_search(res, match_res, match_regex);//搜索匹配度
-		regex_search(res, img_res, img_regex);//搜索img url
-		regex_search(res, info_res, info_regex);//搜索画师和id信息
-		regex_search(res, title_res, title_regex);//搜索标题信息
-		info = info_res[0];
-		string::const_iterator strStart = info.begin(), strEnd = info.end();
+		string name, match;
+		Document snao_json;
+		snao_json.Parse(txt.c_str());
 
-		snao_res = title_res.str(1) + "\n相似度：" + match_res.str(1) + "%\n图片地址：";
-		//分别搜索画师id信息
-		if (!regex_search(res, res_res, res_regex))
+		if (Pointer("/header/status").Get(snao_json)->GetInt() > 0)
 		{
-			if (regex_search(strStart, strEnd, id_res, id_regex))
-			{
-				snao_res = snao_res + id_res.str(1) + "\n画师：";
-				strStart = id_res[0].second;
-			}
-			if (regex_search(strStart, strEnd, id_res, id_regex))
-			{
-				snao_res = snao_res + id_res.str(1);
-			}
+			return false;
+		}
+		match = Pointer("/results/0/header/similarity").Get(snao_json)->GetString();
+		//分别本子与图片，防止解析错误
+		if (strstr(txt.c_str(), "eng_name"))
+		{
+			snao_res = "相似度：" + match + "%\n来源：" + json_parse(snao_json, "/results/0/data", "source") + "\n名字:" + json_parse(snao_json, "/results/0/data", "eng_name");
 		}
 		else
 		{
-			snao_res = snao_res + res_res.str(1);
+			string member;
+			//分别搜索画师id信息
+			snao_res = json_parse(snao_json, "/results/0/data", "title");
+			snao_res = snao_res + "\n相似度：" + match + "%\n图片地址：" + json_parse(snao_json, "/results/0/data", "ext_urls");
+			member = json_parse(snao_json, "/results/0/data", "member_name");
+			if (!member.empty())
+			{
+				snao_res = snao_res +"\n画师：" + member + "\n画师Id:" + json_parse(snao_json, "/results/0/data", "member_id");
+			}
 		}
 		
 		srand((unsigned)time(NULL));
 		name = "./temp/" + to_string(rand());
 		name = name + ".jpg";
-		//下载图片
-		if (!r.DownloadImg(img_res.str(1), name, proxy, https))
-		{
-			D_img = false;
-		}
+		
 		//发送消息
-		if (D_img)
+		if (r.DownloadImg(Pointer("/results/0/header/thumbnail").Get(snao_json)->GetString(), name, proxy, proxy_rule, proxy_add))
 		{
 			if (msty)
 			{
 				GID_t gid = GID_t(id);
 				GroupImage img = bot.UploadGroupImage(name);
 				bot.SendMessage(gid, MessageChain().Image(img).Plain(snao_res), msid);
-				if (stod(match_res.str(1)) < min_match)
+				if (stod(match) < min_match)
 				{
 					bot.SendMessage(gid, MessageChain().Plain("相似度过低，将使用ascii2d搜索"), msid);
-					a2d_search(proxy, https, url, bot, type, id, msid);
+					a2d_search(proxy, proxy_rule, proxy_add, url, bot, type, id, msid);
 				}
 			}
 			else
@@ -253,10 +287,10 @@ bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTy
 				QQ_t gid = QQ_t(id);
 				FriendImage img = bot.UploadFriendImage(name);
 				bot.SendMessage(gid, MessageChain().Image(img).Plain(snao_res));
-				if (stod(match_res.str(1)) < min_match)
+				if (stod(match) < min_match)
 				{
 					bot.SendMessage(gid, MessageChain().Plain("相似度过低，将使用ascii2d搜索"));
-					if (!a2d_search(proxy, https, url, bot, type, id, msid))
+					if (!a2d_search(proxy, proxy_rule, proxy_add, url, bot, type, id, msid))
 					{
 						return false;
 					}
@@ -271,10 +305,10 @@ bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTy
 				GroupImage img = bot.UploadGroupImage(name);
 				bot.SendMessage(gid, MessageChain().Plain("网络错误，结果不包含图片"), msid);
 				bot.SendMessage(gid, MessageChain().Plain(snao_res), msid);
-				if (stod(match_res.str(1)) < min_match)
+				if (stod(match) < min_match)
 				{
 					bot.SendMessage(gid, MessageChain().Plain("相似度过低，将使用ascii2d搜索"), msid);
-					a2d_search(proxy, https, url, bot, type, id, msid);
+					a2d_search(proxy, proxy_rule, proxy_add, url, bot, type, id, msid);
 				}
 			}
 			else
@@ -283,10 +317,10 @@ bool snao_search(bool proxy, string& https, string url, MiraiBot& bot, MessageTy
 				FriendImage img = bot.UploadFriendImage(name);
 				bot.SendMessage(gid, MessageChain().Plain("网络错误，结果不包含图片"));
 				bot.SendMessage(gid, MessageChain().Plain(snao_res));
-				if (stod(match_res.str(1)) < min_match)
+				if (stod(match) < min_match)
 				{
 					bot.SendMessage(gid, MessageChain().Plain("相似度过低，将使用ascii2d搜索"));
-					a2d_search(proxy, https, url, bot, type, id, msid);
+					a2d_search(proxy, proxy_rule, proxy_add, url, bot, type, id, msid);
 				}
 			}
 		}

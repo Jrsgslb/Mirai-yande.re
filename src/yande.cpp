@@ -3,8 +3,9 @@
 
 #include <iostream>
 #include <random>
-#include <Windows.h>
 #include <regex>
+#include <time.h>
+#include <cstdio>
 #include <io.h>
 
 #include <boost/property_tree/ptree.hpp>
@@ -16,7 +17,7 @@ using namespace boost::property_tree;
 
 
 //y站指定tag图片获取
-Document yande(string plain, bool proxy, string https, int64_t group_num, bool first, bool original)
+Document yande(string plain, bool proxy, string proxy_rule, string proxy_add, int64_t group_num, bool first, bool original)
 {
 	try
 	{
@@ -72,9 +73,9 @@ Document yande(string plain, bool proxy, string https, int64_t group_num, bool f
 		HttpRequest r;
 
 		url = "https://yande.re/post.json?page=" + page + "&tags=" + tags + "&limit=1";
-		txt = r.Http_Get(url, proxy, https);
+		txt = r.Http_Get(url, proxy, proxy_rule, proxy_add);
 
-		if (txt.size() < 5)
+		if (txt.empty())
 		{
 			Pointer("/code").Set(id_info, 0);
 			Pointer("/info").Set(id_info, "发生错误，详见控制台");
@@ -93,7 +94,7 @@ Document yande(string plain, bool proxy, string https, int64_t group_num, bool f
 		if (rating < tag.get<string>("rating") && !r18.get<bool>(r18_temp.c_str(), false))
 		{
 			//递归大法好
-			id_info = yande(plain, proxy, https, group_num, false, original);
+			id_info = yande(plain, proxy, proxy_rule, proxy_add, group_num, false, original);
 			return id_info;
 		}
 		//push数据
@@ -113,7 +114,7 @@ Document yande(string plain, bool proxy, string https, int64_t group_num, bool f
 			name = "./temp/" + id + ".jpg";
 			durl = Pointer("/0/sample_url").Get(y)->GetString();
 		}
-		if (r.DownloadImg(durl, name, proxy, https))
+		if (r.DownloadImg(durl, name, proxy, proxy_rule, proxy_add))
 		{
 			Pointer("/dimg").Set(id_info, 1);
 		}
@@ -136,7 +137,7 @@ Document yande(string plain, bool proxy, string https, int64_t group_num, bool f
 	}
 }
 //y站指定id图片获取
-Document yid(string id, bool proxy, string https, int64_t group_num)
+Document yid(string id, bool proxy, string proxy_rule, string proxy_add, int64_t group_num)
 {
 	try
 	{
@@ -145,8 +146,8 @@ Document yid(string id, bool proxy, string https, int64_t group_num)
 		url = "https://yande.re/post/show/" + id;
 		//访问id页面
 		HttpRequest r;
-		txt = r.Http_Get(url, proxy, https);
-		if (txt.size() < 100)
+		txt = r.Http_Get(url, proxy, proxy_rule, proxy_add);
+		if (txt.empty())
 		{
 			Pointer("/code").Set(info, 0);
 			Pointer("/info").Set(info, "发生错误，详见控制台");
@@ -199,7 +200,7 @@ Document yid(string id, bool proxy, string https, int64_t group_num)
 			name = "./temp/" + id + ".jpg";
 			Pointer("/name").Set(info, name.c_str());
 			Pointer("/url").Set(info, file_img_res.str(1).c_str());
-			if (r.DownloadImg(file_img_res.str(1), name, proxy, https))
+			if (r.DownloadImg(file_img_res.str(1), name, proxy, proxy_rule, proxy_add))
 			{
 				Pointer("/dimg").Set(info, 1);
 			}
@@ -212,7 +213,7 @@ Document yid(string id, bool proxy, string https, int64_t group_num)
 		name = "./temp/" + id + "." + png_img_res.str(1);
 		Pointer("/name").Set(info, name.c_str());
 		Pointer("/url").Set(info, png_img_res.str(2).c_str());
-		if (r.DownloadImg(png_img_res.str(2), name, proxy, https))
+		if (r.DownloadImg(png_img_res.str(2), name, proxy, proxy_rule, proxy_add))
 		{
 			Pointer("/dimg").Set(info, 1);
 		}
@@ -232,20 +233,10 @@ Document yid(string id, bool proxy, string https, int64_t group_num)
 	}
 }
 //获取13位时间戳
-static __int64 GetUnixTime()
+long long GetUnixTime()
 {
-	string nowTimeUnix;
-	string cs_uninxtime;
-	string cs_milliseconds;
-	SYSTEMTIME sysTime;
-	GetLocalTime(&sysTime);
-	time_t unixTime;
-	time(&unixTime);
-	char buf[30], buf1[30];
-	sprintf_s(buf, sizeof(buf), "%I64d", (INT64)unixTime);
-	sprintf_s(buf1, sizeof(buf1), "%03I64d", (INT64)sysTime.wMilliseconds);
-	nowTimeUnix = string(buf) + string(buf1);
-	return _atoi64(nowTimeUnix.c_str());
+	int64_t times = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	return times;
 }
 //清理./temp文件夹下的文件
 bool ClearTemp()
@@ -273,7 +264,7 @@ bool ClearTemp()
 	return true;
 }
 //更新tag
-string MessageReload(bool proxy, string https)
+string MessageReload(bool proxy, string proxy_rule, string proxy_add)
 {
 	ptree pt, limit;
 	ini_parser::read_ini("./config/rule.ini", pt);
@@ -304,7 +295,7 @@ string MessageReload(bool proxy, string https)
 		//获取网页并检验状态
 		HttpRequest r;
 		url = "https://yande.re/post.xml?tags=" + tags;
-		text = r.Http_Get(url, proxy, https);
+		text = r.Http_Get(url, proxy, proxy_rule, proxy_add);
 
 		if (text.empty())err = tags + "\n" + err;
 		else
@@ -353,7 +344,7 @@ string MessageReload(bool proxy, string https)
 	else return "ok";
 }
 //热门排行榜图片
-Document Hot_Img(bool proxy, string https, int64_t group, bool orginal)
+Document Hot_Img(bool proxy, string proxy_rule, string proxy_add, int64_t group, bool orginal)
 {
 	HttpRequest r;
 	//取随机数
@@ -363,7 +354,7 @@ Document Hot_Img(bool proxy, string https, int64_t group, bool orginal)
 	string page = to_string(u(e)), txt, temp, url, rating, file, id;
 	//解析json
 	Document Hot_img_json, res;
-	txt = r.Http_Get("https://yande.re/post/popular_recent.json", proxy, https);
+	txt = r.Http_Get("https://yande.re/post/popular_recent.json", proxy, proxy_rule, proxy_add);
 	if (txt.size() < 100)
 	{
 		Pointer("/code").Set(res, 0);
@@ -393,7 +384,7 @@ Document Hot_Img(bool proxy, string https, int64_t group, bool orginal)
 		url = Pointer(temp.c_str()).Get(Hot_img_json)->GetString();
 		temp = "/" + page + "/file_ext";
 		file = "./temp/" + id + "." + Pointer(temp.c_str()).Get(Hot_img_json)->GetString();
-		if (!r.DownloadImg(url, file, proxy, https))
+		if (!r.DownloadImg(url, file, proxy, proxy_rule, proxy_add))
 		{
 			Pointer("/code").Set(res, 0);
 			Pointer("/info").Set(res, "发送错误，详见控制台");
@@ -407,7 +398,7 @@ Document Hot_Img(bool proxy, string https, int64_t group, bool orginal)
 		temp = "/" + page + "/sample_url";
 		url = Pointer(temp.c_str()).Get(Hot_img_json)->GetString();
 		file = "./temp/" + id + ".jpg";
-		if (!r.DownloadImg(url, file, proxy, https))
+		if (!r.DownloadImg(url, file, proxy, proxy_rule, proxy_add))
 		{
 			Pointer("/code").Set(res, 0);
 			Pointer("/info").Set(res, "发送错误，详见控制台");

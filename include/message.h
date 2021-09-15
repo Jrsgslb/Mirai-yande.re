@@ -5,7 +5,7 @@ using namespace std;
 using namespace rapidjson;
 
 //启动检查
-bool StartCheck();
+void StartCheck();
 //y站指令刷新减少文件读取次数
 void CommandReload();
 //y站自定义指令检查

@@ -7,88 +7,56 @@
 #include <direct.h>
 
 #include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/ini_parser.hpp> 
+#include <boost/property_tree/ini_parser.hpp>
 
-#include <rapidjson/filereadstream.h>
-#include <rapidjson\filewritestream.h>
-#include <rapidjson\writer.h>
+#include <../include/HttpRequest.hpp>
 
 using namespace boost::property_tree;
 
 vector<string> command;
-
-bool StartCheck()
+//创建文件函数
+bool CreateFile(string file)
+{
+	fstream fs;
+	fs.open(file.c_str(), ios::in);
+	if (!fs)
+	{
+		ofstream fout(file.c_str());
+		if (fout) fout.close();
+		return true;
+	}
+	else
+	{
+		fs.close();
+		return false;
+	}
+}
+//启动文件及文件夹检查
+void StartCheck()
 {
 	//检测并创建文件夹
 	if (_access("./temp", 0) == -1)_mkdir("./temp");
 	if (_access("./config", 0) == -1)_mkdir("./config");
 	if (_access("./config/bili", 0) == -1)_mkdir("./config/bili");
 	if (_access("./config/data", 0) == -1)_mkdir("./config/data");
-	//检查dll
-	if (access("./libcurl.dll", 0) == -1)
-	{
-		if (system("curl http://101.37.245.179:8000/down/k3b5es2COdMe --output libcurl.dll")!=0)
-		{
-			return false;
-		}
-	}
-	if (access("./zlib1.dll", 0) == -1)
-	{
-		if (system("curl http://101.37.245.179:8000/down/LI5W5ABlEfKi --output zlib1.dll") != 0)
-		{
-			return false;
-		}
-	}
 	//文件不存在自动创建
-	fstream fs1, fs2, fs3,fs4,fs5,fs6;
-	fs1.open("./config/data/member.ini", ios::in);
-	fs2.open("./config/data/group.ini", ios::in);
-	fs3.open("./temp/num.ini", ios::in);
-	fs4.open("./config/Group_whitelist.txt", ios::in);
-	fs5.open("./config/whitelist.txt", ios::in);
-	fs6.open("./config/bili/live.json", ios::in);
-	if (!fs1)
+	CreateFile("./config/data/member.ini"); //个人数据记录文件
+	CreateFile("./config/data/group.ini"); //群组数据记录文件
+	CreateFile("./temp/num.ini"); //调用统计次数文件
+	CreateFile("./config/Group_whitelist.txt"); //群白名单文件
+	CreateFile("./config/whitelist.txt"); //个人白名单文件
+	CreateFile("./config/bili/live.json"); //直播订阅文件
+	CreateFile("./config/rule.ini"); //自定义发图配置文件
+	CreateFile("./config/bili/dynamic.json");//动态订阅文件
+	if (CreateFile("./mah.json")) //mirai api http 连接文件
 	{
-		ofstream fout("./config/data/member.ini");
-		if (fout) fout.close();
+		WriteFile("./mah.json", "{\n		\"hostname\": \"127.0.0.1\",\n		\"port\" : 8081,\n		\"botQQ\" : 100001,\n		\"verifyKey\" : \"Hello\",\n		\"enableVerify\" : true,\n		\"singleMode\" : false,\n		\"reservedSyncId\" : \"-1\",\n		\"threadPoolSize\" : 4\n}");
 	}
-	else
-		fs1.close();
-	if (!fs2)
+	if (CreateFile("./config.json")) //程序配置文件
 	{
-		ofstream fout("./config/data/group.ini");
-		if (fout) fout.close();
+		HttpRequest r;
+		WriteFile("./config.json", r.Http_Get("https://raw.githubusercontent.com/Jrsgslb/Mirai-yande.re/main/doc/config,json"));
 	}
-	else
-		fs2.close();
-	if (!fs3)
-	{
-		ofstream fout("./temp/num.ini");
-		if (fout) fout.close();
-	}
-	else
-		fs3.close();
-	if (!fs4)
-	{
-		ofstream fout("./config/Group_whitelist.txt");
-		if (fout) fout.close();
-	}
-	else
-		fs4.close();
-	if (!fs5)
-	{
-		ofstream fout("./config/whitelist.txt");
-		if (fout) fout.close();
-	}
-	else
-		fs5.close();
-	if (!fs6)
-	{
-		ofstream fout("./config/bili/live.json");
-		if (fout) fout.close();
-	}
-	else
-		fs6.close();
 	//检查指令文件有无空行
 	ifstream in("./config/command.txt");
 	string line, str;
@@ -108,12 +76,10 @@ bool StartCheck()
 		str = str + "\n" + line;
 	}
 
-	FILE* tem = fopen("./config/command.txt", "w");
-	fprintf(tem, "%s", str.c_str());
-	fclose(tem);
+	WriteFile("./config/command.txt", str);
 	in.close();
-
-	return true;
+	// 指令读取
+	CommandReload();
 }
 
 void CommandReload()
@@ -194,21 +160,13 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 		ben = res[0].second;
 	}
 
-	/*
-	残留问题：
-
-	？？？
-	热门图片指令的频率限制实现
-	？？？
-
-	*/
-
 	//频率限制开始
 	switch (mod1)
 	{
 		default: return true;
 		case(0):
 		{
+			int time_old;
 			ptree group_pt, group_time;
 			string test = to_string(group_num) + ".time";
 			ini_parser::read_ini("./config/data/group.ini", group_pt);
@@ -216,14 +174,15 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 			try
 			{
 				group_time = group_pt.get_child(to_string(group_num));
+				time_old = group_time.get<int>("time");
 			}
-			catch (const std::exception&)
+			catch (const std::exception& err)
 			{
 				group_pt.put<string>(test.c_str(), "0");
 				ini_parser::write_ini("./config/data/group.ini", group_pt);
 				group_time = group_pt.get_child(to_string(group_num));
+				time_old = group_time.get<int>("time");
 			}
-			int time_old = group_time.get<int>("time");
 			time_t time_new = time(NULL);
 			switch (mod2)
 			{

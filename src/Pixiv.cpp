@@ -5,7 +5,7 @@
 
 
 //p站id获取图片
-bool Pixiv_id(bool proxy, string& https, string pid, MiraiBot& bot, int64_t group_id, int msid)
+bool Pixiv_id(bool proxy, string& proxy_rule, string& proxy_add, string pid, MiraiBot& bot, int64_t group_id, int msid)
 {
 	try
 	{
@@ -15,7 +15,7 @@ bool Pixiv_id(bool proxy, string& https, string pid, MiraiBot& bot, int64_t grou
 
 		HttpRequest r;
 		url = "https://www.pixiv.net/ajax/illust/" + pid;
-		txt = r.Http_Get_Pixiv(url, proxy, https);
+		txt = r.Http_Get_Pixiv(url, proxy, proxy_rule, proxy_add);
 
 		if (txt.empty())
 		{
@@ -32,7 +32,7 @@ bool Pixiv_id(bool proxy, string& https, string pid, MiraiBot& bot, int64_t grou
 		{
 			name = "./temp/" + pid + ".jpg";
 			url = "https://pixiv.cat/" + pid + ".jpg";
-			if (r.DownloadImg(url, name, false, https))
+			if (r.DownloadImg(url, name, false, "", ""))
 			{
 				GroupImage img = bot.UploadGroupImage(name);
 				bot.SendMessage(gid, MessageChain().Image(img));
@@ -51,7 +51,7 @@ bool Pixiv_id(bool proxy, string& https, string pid, MiraiBot& bot, int64_t grou
 			{
 				name = "./temp/" + pid + "-" + to_string(i) + ".jpg";
 				url = "https://pixiv.cat/" + pid + "-" + to_string(i) + ".jpg";
-				if (r.DownloadImg(url, name, false, https))
+				if (r.DownloadImg(url, name, false, "", ""))
 				{
 					GroupImage img = bot.UploadGroupImage(name);
 					bot.SendMessage(gid, MessageChain().Image(img));
@@ -70,11 +70,18 @@ bool Pixiv_id(bool proxy, string& https, string pid, MiraiBot& bot, int64_t grou
 	catch (const std::exception& err)
 	{
 		printf("%s \n", err.what());
-		return false;
+		if (err.what() == "网络错误.")
+		{
+
+		}
+		else
+		{
+			return false;
+		}
 	}
 }
 //p站排行榜获取
-bool Pixiv_rank(bool proxy, string& https, int count, MiraiBot& bot, int64_t group_id)
+bool Pixiv_rank(bool proxy, string& proxy_rule, string& proxy_add, int count, MiraiBot& bot, int64_t group_id)
 {
 	try
 	{
