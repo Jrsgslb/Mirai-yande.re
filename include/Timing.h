@@ -1,6 +1,5 @@
 #pragma once
 
-#define MIRAICPP_STATICLIB
 #include <mirai.h>
 using namespace Cyan;
 

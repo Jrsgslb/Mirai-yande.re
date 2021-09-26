@@ -5,7 +5,7 @@
 
 >问题反馈或者不会用可以加群：[418227569](https://qm.qq.com/cgi-bin/qm/qr?k=FwFTGePLZ7PljrBzwrl4Boo6Q_2JqTuS&jump_from=webapi)
 ## 使用环境
-Mirai-Api-Http 版本 1.11+
+Mirai-Api-Http 版本 2.0.2+
 ## 使用说明
 ### **使用之前**
 在**插件运行目录**下创建`config.json`写入配置信息

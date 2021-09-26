@@ -48,15 +48,12 @@ void StartCheck()
 	CreateFile("./config/bili/live.json"); //直播订阅文件
 	CreateFile("./config/rule.ini"); //自定义发图配置文件
 	CreateFile("./config/bili/dynamic.json");//动态订阅文件
+	CreateFile("./config.json"); //程序配置文件
 	if (CreateFile("./mah.json")) //mirai api http 连接文件
 	{
 		WriteFile("./mah.json", "{\n		\"hostname\": \"127.0.0.1\",\n		\"port\" : 8081,\n		\"botQQ\" : 100001,\n		\"verifyKey\" : \"Hello\",\n		\"enableVerify\" : true,\n		\"singleMode\" : false,\n		\"reservedSyncId\" : \"-1\",\n		\"threadPoolSize\" : 4\n}");
 	}
-	if (CreateFile("./config.json")) //程序配置文件
-	{
-		HttpRequest r;
-		WriteFile("./config.json", r.Http_Get("https://raw.githubusercontent.com/Jrsgslb/Mirai-yande.re/main/doc/config,json"));
-	}
+	
 	//检查指令文件有无空行
 	ifstream in("./config/command.txt");
 	string line, str;
@@ -176,7 +173,7 @@ bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin)
 				group_time = group_pt.get_child(to_string(group_num));
 				time_old = group_time.get<int>("time");
 			}
-			catch (const std::exception& err)
+			catch (const std::exception&)
 			{
 				group_pt.put<string>(test.c_str(), "0");
 				ini_parser::write_ini("./config/data/group.ini", group_pt);

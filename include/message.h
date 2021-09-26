@@ -1,20 +1,20 @@
-#pragma once
+ï»¿#pragma once
 #include <string>
 #include <rapidjson/document.h>
 using namespace std;
 using namespace rapidjson;
 
-//Æô¶¯¼ì²é
+//å¯åŠ¨æ£€æŸ¥
 void StartCheck();
-//yÕ¾Ö¸ÁîË¢ĞÂ¼õÉÙÎÄ¼ş¶ÁÈ¡´ÎÊı
+//yç«™æŒ‡ä»¤åˆ·æ–°å‡å°‘æ–‡ä»¶è¯»å–æ¬¡æ•°
 void CommandReload();
-//yÕ¾×Ô¶¨ÒåÖ¸Áî¼ì²é
+//yç«™è‡ªå®šä¹‰æŒ‡ä»¤æ£€æŸ¥
 bool MessageCheck(string plain);
-//ÆµÂÊÏŞÖÆ
+//é¢‘ç‡é™åˆ¶
 bool MessageLimit(string plain, int64_t qq_num, int64_t group_num, bool admin);
-//r18Éè¶¨
+//r18è®¾å®š
 bool MessageR18(int64_t qq_num, int64_t group_num, bool R18);
-//¶ÁÈ¡ÎÄ¼ş
+//è¯»å–æ–‡ä»¶
 string ReloadFile(const char* file);
-//Ğ´ÈëÎÄ¼ş
+//å†™å…¥æ–‡ä»¶
 bool WriteFile(const char* file, string txt);

@@ -1,6 +1,5 @@
 #pragma once
 
-#define MIRAICPP_STATICLIB
 #include <string>
 #include <rapidjson/document.h>
 #include <mirai.h>

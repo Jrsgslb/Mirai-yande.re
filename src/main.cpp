@@ -1,5 +1,4 @@
 // 注意: 本项目的所有源文件都必须是 UTF-8 编码
-#define MIRAICPP_STATICLIB
 
 #include <iostream>
 #include <regex>
@@ -142,6 +141,7 @@ int main()
 		StartCheck();
 		ReloadConfig();
 		opts = SessionOptions::FromJsonFile("./mah.json");
+		bot.Connect(opts);
 	}
 	catch (const std::exception& err)
 	{
@@ -149,7 +149,6 @@ int main()
 		cin.get(); 
 		return 0;
 	}
-	bot.Connect(opts);
 	//检测版本
 	CheckVersion(bot.GetMiraiApiHttpVersion(), bot.GetMiraiCppVersion(), "1.2.0");
 	//抛出循环线程
@@ -602,6 +601,12 @@ int main()
 				}
 			}
 		});
+
+	bot.On<BotLeaveEventKick>
+		([&](BotLeaveEventKick m)
+	{
+				
+	});
 
 	bot.On<LostConnection>
 		([&](LostConnection e)

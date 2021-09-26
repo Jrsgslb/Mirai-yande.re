@@ -166,11 +166,7 @@ bool Bilibili_cos(MiraiBot& bot, GID_t gid)
 	catch (const std::exception& err)
 	{
 		printf("%s \n", err.what());
-		if (err.what() == "网络错误.")
-		{
-
-		}
-		else
+		if (err.what() != "网络错误.")
 		{
 			return false;
 		}
@@ -203,6 +199,11 @@ void Reload_dynamic_uid()
 			string url;
 			url = "https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history?host_uid=" + uid;
 			bili_dynamic_status.Parse(r.Http_Get_Bili(url).c_str());
+			//断网或者网络错误时判断
+			if (bili_dynamic_status.HasParseError())
+			{
+				continue;
+			}
 			//新用户无动态情况
 			if (!Pointer("/data").Get(bili_dynamic_status)->HasMember("cards"))
 			{
@@ -239,7 +240,7 @@ MessageChain Bilibili_parse_dynamic(int type, string json)
 		{
 			string reply_str;
 			reply_str = Pointer("/user/uname").Get(bili_card_json)->GetString();
-			reply_str = reply_str + "转发了一条动态:\n\n";
+			reply_str = reply_str + "转发了一条动态:\n" + Pointer("/item/content").Get(bili_card_json)->GetString() + "\n";
 			reply = reply.Plain(reply_str) + Bilibili_parse_dynamic(Pointer("/item/orig_type").Get(bili_card_json)->GetInt(), Pointer("/origin").Get(bili_card_json)->GetString());
 			return reply;
 		}
@@ -292,11 +293,11 @@ MessageChain Bilibili_parse_dynamic(int type, string json)
 		{
 			string reply_str, url;
 			GroupImage img;
-			url = Pointer("/banner_url").Get(bili_card_json)->GetString();
+			url = Pointer("/origin_image_urls/0").Get(bili_card_json)->GetString();
 			url.replace(0, 7, "http:/");
 			img.Url = url;
 			reply_str = Pointer("/author/name").Get(bili_card_json)->GetString();
-			reply_str = reply_str + ":  专栏动态\n" + Pointer("/dynamic").Get(bili_card_json)->GetString() + "\n" + Pointer("/title").Get(bili_card_json)->GetString();
+			reply_str = reply_str + ":  专栏动态\n" + Pointer("/summary").Get(bili_card_json)->GetString() + "\n" + Pointer("/title").Get(bili_card_json)->GetString();
 			reply.Plain(reply_str).Image(img);
 			return reply;
 		}
@@ -353,6 +354,13 @@ MessageChain Bilibili_parse_dynamic(int type, string json)
 	return reply;
 }
 
+//消息免打扰
+bool Bilibili_dynamic_Send()
+{
+
+	return true;
+}
+
 void Bilibili_dynamic(MiraiBot& bot)
 {
 	//为空直接返回
@@ -360,9 +368,15 @@ void Bilibili_dynamic(MiraiBot& bot)
 	{
 		return;
 	}
+	//免打扰判断
+	if (Bilibili_dynamic_Send())
+	{
+		return;
+	}
 	HttpRequest r;
 	Document bili_dynamic_json;
 	string txt, url, uid, temp, i_str;
+	unsigned long long new_id;
 	try
 	{
 		for (int i = 0; i < dynamic_uid.size(); i++)
@@ -383,32 +397,38 @@ void Bilibili_dynamic(MiraiBot& bot)
 			{
 				continue;
 			}
-			//动态id判断
-			if (Pointer("/data/cards/0/desc/dynamic_id").Get(bili_dynamic_json)->GetUint64() != dynamic_status[uid])
+			new_id = Pointer("/data/cards/0/desc/dynamic_id").Get(bili_dynamic_json)->GetUint64();
+			//删除动态判断
+			if (dynamic_status[uid] > new_id)
 			{
-				cout << dynamic_status[uid] << endl << Pointer("/data/cards/0/desc/dynamic_id").Get(bili_dynamic_json)->GetUint64() << endl << endl;
+				dynamic_status[uid] = new_id;
+				continue;
+			}
+			//动态id判断
+			if (new_id != dynamic_status[uid])
+			{
 				//读取配置json
 				Document d;
 				d.Parse(ReloadFile("./config/bili/dynamic.json").c_str());
-				cout << Pointer("/data/cards").Get(bili_dynamic_json)->Size() << endl;
+				int size_j = Pointer("/data/cards").Get(bili_dynamic_json)->Size();
 				//循环查找动态信息，防止漏掉
-				for (int j = 0; j < Pointer("/data/cards").Get(bili_dynamic_json)->Size(); j++)
+				for (int j = 0; j < size_j; j++)
 				{
 					string num = to_string(j);
 					temp = "/data/cards/" + num + "/desc/type";
 					int type = Pointer(temp.c_str()).Get(bili_dynamic_json)->GetInt();
 					temp = "/data/cards/" + num + "/desc/dynamic_id";
-					if (Pointer(temp.c_str()).Get(bili_dynamic_json)->GetUint64() == dynamic_status[uid])
+					unsigned long long dynamic_id = Pointer(temp.c_str()).Get(bili_dynamic_json)->GetUint64();
+					//当动态ID小于等于时退出
+					if (dynamic_id <= dynamic_status[uid])
 					{
-						cout << dynamic_status[uid] << endl;
-						dynamic_status[uid] = Pointer("/data/cards/0/desc/dynamic_id").Get(bili_dynamic_json)->GetUint64();
-						cout << dynamic_status[uid] << endl;
 						break;
 					}
 					temp = "/" + i_str + "/send";
 					int size = Pointer(temp.c_str()).Get(d)->Size();
 					string s_str;
 					long long id = 0;
+					printf("UID: %s 发布了新动态 ID: %llu \n", dynamic_uid[i].c_str(), new_id);
 					//发送消息
 					for (int s = 0; s < size; s++)
 					{
@@ -428,6 +448,8 @@ void Bilibili_dynamic(MiraiBot& bot)
 						}
 					}
 				}
+				//刷新动态ID
+				dynamic_status[uid] = new_id;
 			}
 		}
 		return;
@@ -435,7 +457,14 @@ void Bilibili_dynamic(MiraiBot& bot)
 	catch (const std::exception& err)
 	{
 		printf("%s \n", err.what());
-		return;
+		if (err.what() != "网络错误")
+		{
+			if (new_id > 0)
+			{
+				dynamic_status[uid] = new_id;
+			}
+			return;
+		}
 	}
 	return;
 }
