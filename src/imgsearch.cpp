@@ -79,7 +79,7 @@ bool a2d_search(bool proxy, string proxy_rule, string proxy_add, string url, Mir
 		}
 		//GET
 		HttpRequest r;
-		color = r.Http_Get(host, proxy, proxy_rule, proxy_add);
+		color = r.Http_Get_a2d(host, proxy, proxy_rule, proxy_add);
 		//正则匹配图片hash和色调搜索结果
 		regex search_hash("class='hash'>(.*?)<");
 		regex search_res("rel=\"noopener\" href=\"(.*?)\">(.*?)<");
@@ -92,7 +92,7 @@ bool a2d_search(bool proxy, string proxy_rule, string proxy_add, string url, Mir
 		}
 		//特征搜索
 		host = "https://ascii2d.net/search/bovw/" + hash.str(1);
-		bovw = r.Http_Get(host, proxy, proxy_rule, proxy_add);
+		bovw = r.Http_Get_a2d(host, proxy, proxy_rule, proxy_add);
 		//判断状态码
 		if (bovw.empty())
 		{

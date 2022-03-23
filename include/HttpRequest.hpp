@@ -40,7 +40,8 @@ public:
 			printf("%s \n %s \n", err.what(), r.error.message.c_str());
 			return std::string("");
 		}
-	};//Get请求
+	};
+	//Get请求
 	std::string Http_Get(std::string url)
 	{
 		Response r;
@@ -95,6 +96,33 @@ public:
 			else
 			{
 				r = Get(Url{ url }, Timeout{ 10000 }, Header{ {"Referer", "https://www.pixiv.net/"}, { "user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.56" } });
+			}
+			if (r.status_code != 200)
+			{
+				printf("%s \n", r.error.message.c_str());
+				return std::string("");
+			}
+			return r.text;
+		}
+		catch (const std::exception& err)
+		{
+			printf("%s \n %s \n", err.what(), r.error.message.c_str());
+			return std::string("");
+		}
+	};
+	//Get-a2d转用(UA为"PostmanRuntime/7.29.0")
+	std::string Http_Get_a2d(std::string url, bool proxy, std::string proxy_rule, std::string proxy_add)
+	{
+		Response r;
+		try
+		{
+			if (proxy)
+			{
+				r = Get(Url{ url }, Proxies{ {proxy_rule, proxy_add} }, Timeout{ 10000 }, Header{ {"user-agent", "PostmanRuntime/7.29.0"} });
+			}
+			else
+			{
+				r = Get(Url{ url }, Timeout{ 10000 }, Header{ {"user-agent", "PostmanRuntime/7.29.0"} });
 			}
 			if (r.status_code != 200)
 			{

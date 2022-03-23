@@ -153,7 +153,8 @@ int main()
 	CheckVersion(bot.GetMiraiApiHttpVersion(), bot.GetMiraiCppVersion(), "1.2.0");
 	//抛出循环线程
 	auto a = async(TimeLoop, time_updata, time_wait, ref(proxy), ref(proxy_rule), ref(proxy_add), ref(bot), ref(master));
-
+	//上线提醒
+	bot.SendMessage(QQ_t(master), MessageChain().Plain("Bot已上线"));
 	//订阅消息正则
 	regex bili_live_regex("^(增加|开启|删除|关闭)(动态|直播)订阅(?:Uid|UID|uid):?(\\d+)$");
 	cmatch bili_live_res;

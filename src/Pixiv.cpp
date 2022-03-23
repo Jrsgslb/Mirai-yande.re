@@ -1,6 +1,6 @@
 ﻿#include "../include/Pixiv.h"
 #include "../include/HttpRequest.hpp"
-
+#include <algorithm>
 #include <rapidjson/pointer.h>
 
 
@@ -31,8 +31,8 @@ bool Pixiv_id(bool proxy, string& proxy_rule, string& proxy_add, string pid, Mir
 		if (Pointer("/body/pageCount").Get(pixiv)->GetInt() == 1)
 		{
 			name = "./temp/" + pid + ".jpg";
-			url = "https://pixiv.cat/" + pid + ".jpg";
-			if (r.DownloadImg(url, name, false, "", ""))
+			url = "https://pixiv.re/" + pid + ".jpg";
+			if (r.DownloadImg(url, name, proxy, proxy_rule, proxy_add))
 			{
 				GroupImage img = bot.UploadGroupImage(name);
 				bot.SendMessage(gid, MessageChain().Image(img));
@@ -50,8 +50,8 @@ bool Pixiv_id(bool proxy, string& proxy_rule, string& proxy_add, string pid, Mir
 			for (int i = 1; i <= Pointer("/body/pageCount").Get(pixiv)->GetInt(); i++)
 			{
 				name = "./temp/" + pid + "-" + to_string(i) + ".jpg";
-				url = "https://pixiv.cat/" + pid + "-" + to_string(i) + ".jpg";
-				if (r.DownloadImg(url, name, false, "", ""))
+				url = "https://pixiv.re/" + pid + "-" + to_string(i) + ".jpg";
+				if (r.DownloadImg(url, name, proxy, proxy_rule, proxy_add))
 				{
 					GroupImage img = bot.UploadGroupImage(name);
 					bot.SendMessage(gid, MessageChain().Image(img));

@@ -16,7 +16,7 @@ vector<string> live_uid;
 vector<string> dynamic_uid;
 map<string, bool> live_status;
 map <string, unsigned long long> dynamic_status;
-
+//刷新直播订阅uid
 void Reload_live_uid()
 {
 	string bili_live_json_txt = ReloadFile("./config/bili/live.json"), temp, uid;
@@ -44,7 +44,7 @@ void Reload_live_uid()
 	}
 	return;
 }
-
+//直播订阅
 void Bilibili_live(MiraiBot& bot)
 {
 	//为空直接返回
@@ -121,7 +121,7 @@ void Bilibili_live(MiraiBot& bot)
 	}
 
 }
-
+//热门cos
 bool Bilibili_cos(MiraiBot& bot, GID_t gid)
 {
 	try
@@ -172,7 +172,7 @@ bool Bilibili_cos(MiraiBot& bot, GID_t gid)
 		}
 	}
 }
-
+//刷新动态订阅uid
 void Reload_dynamic_uid()
 {
 	string bili_dynamic_json_txt = ReloadFile("./config/bili/dynamic.json"), temp, uid;
@@ -353,14 +353,13 @@ MessageChain Bilibili_parse_dynamic(int type, string json)
 
 	return reply;
 }
-
 //消息免打扰
 bool Bilibili_dynamic_Send()
 {
 
 	return true;
 }
-
+//动态订阅
 void Bilibili_dynamic(MiraiBot& bot)
 {
 	//为空直接返回
@@ -369,7 +368,7 @@ void Bilibili_dynamic(MiraiBot& bot)
 		return;
 	}
 	//免打扰判断
-	if (Bilibili_dynamic_Send())
+	if (!Bilibili_dynamic_Send())
 	{
 		return;
 	}
@@ -435,10 +434,29 @@ void Bilibili_dynamic(MiraiBot& bot)
 						s_str = to_string(s);
 						temp = "/" + i_str + "/send/" + s_str + "/id";
 						id = Pointer(temp.c_str()).Get(d)->GetUint64();
+						if (!Pointer(temp.c_str()).Get(d)->GetBool()) continue;
 						temp = "/" + i_str + "/send/" + s_str + "/type";
 						if (Pointer(temp.c_str()).Get(d)->GetInt() == 0)
 						{
+							bool in = false;
 							temp = "/data/cards/" + num + "/card";
+							vector<Group_t> group_list = bot.GetGroupList();
+							for (int i = 0; i < group_list.size(); i++)
+							{
+								cout << group_list[i].GID.ToInt64() << "  ";
+								if (group_list[i].GID.ToInt64() == id)
+								{
+									in = true;
+									cout << id << endl;
+									break;
+								}
+							}
+							if (!in)
+							{
+								printf("Bot已经不在 %llu (%s) 群内,消息发生失败\n", id, bot.GetGroupConfig(GID_t(id)).Name.c_str());
+								continue;
+							}
+							else
 							bot.SendMessage(GID_t(id), Bilibili_parse_dynamic(type, Pointer(temp.c_str()).Get(bili_dynamic_json)->GetString()));
 						}
 						else
@@ -446,6 +464,7 @@ void Bilibili_dynamic(MiraiBot& bot)
 							temp = "/data/cards/" + num + "/card";
 							bot.SendMessage(QQ_t(id), Bilibili_parse_dynamic(type, Pointer(temp.c_str()).Get(bili_dynamic_json)->GetString()));
 						}
+						_sleep(1 * 1000);
 					}
 				}
 				//刷新动态ID
@@ -463,12 +482,11 @@ void Bilibili_dynamic(MiraiBot& bot)
 			{
 				dynamic_status[uid] = new_id;
 			}
-			return;
 		}
 	}
 	return;
 }
-
+//b站订阅群聊匹配
 void Bilibili_match(MiraiBot& bot, string type, string mode, string uid, int64_t gid_64, int64_t qq_64, int64_t master, int64_t msid)
 {
 	string bili_live_json_txt, temp, newUid, newId, file, file_backup;
@@ -689,7 +707,7 @@ void Bilibili_match(MiraiBot& bot, string type, string mode, string uid, int64_t
 	bot.SendMessage(GID_t(gid_64), MessageChain().Plain(mode).Plain("成功"), msid);
 	return;
 }
-
+//b站订阅私聊匹配
 void Bilibili_match(MiraiBot& bot, string type, string mode, string uid, int64_t qq_64, int64_t master)
 {
 	string bili_live_json_txt, temp, newUid, newId, file, file_backup;

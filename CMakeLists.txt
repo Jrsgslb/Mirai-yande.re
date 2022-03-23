@@ -7,9 +7,12 @@ set(CMAKE_CXX_STANDARD 17)
 # 不要构建 mirai-cpp 自带的 examples
 set(MIRAI_CPP_BUILD_EXAMPLES OFF CACHE BOOL "Build examples" FORCE)
 #添加vcpkg
-set(-DCMAKE_TOOLCHAIN_FILE=D:/App files/vcpkg-2020.07/scripts/buildsystems/vcpkg.cmake)
+set(-DCMAKE_TOOLCHAIN_FILE=D:/vcpkg-2020.07/scripts/buildsystems/vcpkg.cmake)
 # 添加子模块 mirai-cpp
 add_subdirectory(mirai-cpp)
+
+#Python
+find_package(Python3 COMPONENTS Development REQUIRED) # 找到python的库
 #cpr库
 find_package(cpr CONFIG REQUIRED)
 #RapidJSON库
@@ -29,6 +32,7 @@ add_executable(${PROJECT_NAME} src/main.cpp   "include/yande.h" "include/message
 # 设置头文件目录
 include_directories(include)
 # 链接 mirai-cpp
+target_link_libraries(${PROJECT_NAME} PRIVATE Python3::Python) # 连接python
 target_link_libraries(${PROJECT_NAME} PRIVATE mirai-cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
